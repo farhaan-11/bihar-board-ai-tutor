@@ -1,3 +1,5 @@
+# Deploys latest main branch to EC2 via SSH after CI passes
+
 name: Deploy to EC2
 
 on:
