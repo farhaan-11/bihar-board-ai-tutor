@@ -173,8 +173,32 @@ No fix is marked done on assertion alone.
       `intent`, so the glossary is never applied there for **any** language. That
       path is dead in production (`USE_INTENT_ROUTER=true`). Tracked in
       `PROJECT_STATE.md` §4.
-- [ ] **BUG-8 fix** — `askApiLimiter` keyed by identity, not raw IP (copy the quiz limiter pattern)
-      `middlewares/rateLimiters.js:40`
+- [x] **BUG-8 fix** — `askApiLimiter` keyed by identity, not raw IP
+      (branch `bug8-ask-limiter-identity-key`, pending merge).
+      `askApiLimiter` had **no** `keyGenerator`, so express-rate-limit keyed the
+      30-req/min bucket by raw client IP. Under CGNAT / school / coaching /
+      mobile-carrier networks, hundreds of students share one public IP — and so
+      shared **one** bucket: five students asking six questions each in a minute
+      429'd the sixth for what the other five did. The quiz limiters never had
+      this — they key by `user_<id>` / `guest_<id>`, IP only as a last resort.
+      Fix (Rule 4 — fix the key, not the cap): the quiz limiters' inline
+      keyGenerator is extracted to one shared `identityKeyGenerator` export;
+      `askApiLimiter` now uses it, and the 3 quiz limiters switched to the shared
+      fn too (byte-identical behaviour — no 4th copy). The `max: 30` is unchanged
+      — it is now measured per student, so it never has to grow with user count
+      and is far above any real student's asking rate. Verified by
+      `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline
+      (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged.
+      *Noted, not fixed (deferred → `BACKLOG.md` R6 / `PROJECT_STATE.md` §4 BUG-8b):*
+      `globalApiLimiter` (150 req / 15 min, app-wide on every `/api` route at
+      `app.js:60`) has the **same raw-IP cause** and, being lower-rate and
+      route-wide, is the binding constraint for a classroom — so BUG-8 reduces
+      but does not fully remove "one student blocks the class". Out of scope
+      because `globalApiLimiter` runs before `optionalAuth` (no `req.user`), so
+      its fix needs auth moved ahead of it — blast radius across all routes, its
+      own branch + test cycle. **Must NOT be patched by raising 150.**
+      **Blocking condition:** fix before onboarding any single-classroom /
+      school-wifi group; fine for a cohort on separate home connections.
 
 ---
 

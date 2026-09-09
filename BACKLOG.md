@@ -57,6 +57,32 @@ This does not block launch, but it must shape Stage 2 and 3 design.
 
 ---
 
+### R6. `globalApiLimiter` still keyed by raw IP — same cause as BUG-8, second location
+**Threshold:** ~10–15 concurrent students on one shared/NAT IP (school wifi, coaching centre)
+**Where:** `middlewares/rateLimiters.js` `globalApiLimiter` (150 req / 15 min per IP), mounted app-wide at `app.js:60` on every `/api` route
+
+BUG-8 fixed `askApiLimiter` (now keyed by `identityKeyGenerator`). `globalApiLimiter`
+has the **identical defect** — keyed by client IP — and because it covers every
+route and its effective rate (~10/min for the whole IP) is lower than the ask
+limiter's, it becomes the binding constraint for a classroom. So "one student
+blocks the whole class" is reduced by BUG-8 but not fully removed.
+
+It was left out of BUG-8 deliberately: `globalApiLimiter` runs **before**
+`optionalAuth` (it is app-level, not route-level), so `req.user` is not populated
+there. A proper fix needs `optionalAuth` (or a lighter verified-identity read)
+moved ahead of the global limiter — a change with blast radius across all routes,
+which deserves its own branch + failing-test → fix → passing-test cycle, not a
+piggyback on BUG-8.
+
+**Do NOT fix by raising 150** — that is a cap patch (`AUDIT_RULES.md` Rule 4).
+The cause is the key, not the number.
+
+**Blocking condition:** must be fixed before onboarding any single-classroom /
+single-school-wifi group. Fine for a launch cohort on separate home connections.
+(Also noted in `PROJECT_STATE.md` §4 + §7.)
+
+---
+
 ## ⚪ OPINION — design improvements, not bugs
 
 These are things a reviewer would design differently. **None of them is a defect.**

@@ -11,6 +11,20 @@ const createRateLimitResponse = (message) => ({
   },
 });
 
+// Key a limiter bucket by WHO is making the request, not by where from.
+// userId for logged-in students, guestId for guests, and only a bare IP when
+// neither is present. This is what keeps a whole classroom / coaching centre /
+// mobile-carrier network (all sharing one public IP under CGNAT) from sharing a
+// single bucket — each student gets their own. The per-request ceiling therefore
+// never has to grow with the user count.
+// `req.user` is attached by optionalAuth; `x-guest-id` by the frontend guest
+// session. `ipKeyGenerator` is express-rate-limit's own IPv6-safe normaliser.
+export const identityKeyGenerator = (req) => {
+  if (req.user) return `user_${req.user.id}`;
+  const guestId = req.headers['x-guest-id'];
+  return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
+};
+
 // Each limiter gets its own Redis key namespace via prefix.
 // Without unique prefixes, all three limiters would share counters — wrong behavior.
 const createRedisStore = (prefix) =>
@@ -36,10 +50,14 @@ export const globalApiLimiter = rateLimit({
 });
 
 // 2. Ask API Limiter (Protects expensive LLM endpoints)
-// Max 30 requests per 1 minute per IP
+// Max 30 requests per 1 minute PER IDENTITY — keyed by userId/guestId, never
+// bare IP, so a whole classroom behind one CGNAT/school IP doesn't share a
+// bucket. 30/min is far above any real student's asking rate; it only catches
+// scripted abuse from a single identity.
 export const askApiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 30,
+  keyGenerator: identityKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
@@ -73,11 +91,7 @@ export const authApiLimiter = rateLimit({
 export const quizGenerateLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 10,
-  keyGenerator: (req) => {
-    if (req.user) return `user_${req.user.id}`;
-    const guestId = req.headers['x-guest-id'];
-    return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
-  },
+  keyGenerator: identityKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
@@ -94,11 +108,7 @@ export const quizGenerateLimiter = rateLimit({
 export const quizSubmitLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 10,
-  keyGenerator: (req) => {
-    if (req.user) return `user_${req.user.id}`;
-    const guestId = req.headers['x-guest-id'];
-    return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
-  },
+  keyGenerator: identityKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
@@ -116,11 +126,7 @@ export const quizSubmitLimiter = rateLimit({
 export const quizHistoryLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
   max: 30,
-  keyGenerator: (req) => {
-    if (req.user) return `user_${req.user.id}`;
-    const guestId = req.headers['x-guest-id'];
-    return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
-  },
+  keyGenerator: identityKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
