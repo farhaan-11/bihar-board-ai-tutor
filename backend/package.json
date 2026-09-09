@@ -36,7 +36,8 @@
     "test:quiz-history-detail": "node scripts/test-quiz-history-detail.js",
     "test:quiz-gate": "node scripts/test-quiz-gate.js",
     "test:no-cache-fallback": "node scripts/test-no-cache-fallback.js",
-    "test:glossary-devanagari": "node scripts/test-glossary-devanagari.js"
+    "test:glossary-devanagari": "node scripts/test-glossary-devanagari.js",
+    "test:ask-limiter-identity": "node scripts/test-ask-limiter-identity.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

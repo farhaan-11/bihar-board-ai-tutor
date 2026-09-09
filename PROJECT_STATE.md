@@ -170,7 +170,8 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 | ~~BUG-6~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `b576d70`). Fallback-provider embeddings and anything derived from them are never persisted: `geminiEmbeddings.js` `embedQueryWithMeta()` reports `usedFallback`; `embeddingCache` skips L1+L2 when `cacheable:false`; `retrievalCache` skips its 24h write when `result.usedFallback`. Query-time fallback itself untouched. Verified by `npm run test:no-cache-fallback`. See `STAGE1_DONE.md` Section C. |
 | ~~BUG-7~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `e0f9d69`). `getAnswerLanguageInstruction()` returned the Hindi/Devanagari instruction from an early `return` (`languageDetector.js:98`) sitting before the tail glossary-append (TASK-024), so only Hinglish answers ever got the `scienceGlossary.js` term vocabulary. Fix (Rule 4): `wantsGlossary` decided once, independent of the language branch; glossary appended to whichever base instruction is returned; Hindi header instructs Devanagari rendering. Verified by `npm run test:glossary-devanagari`. See `STAGE1_DONE.md` Section C. |
 | BUG-7b (noted, deferred) | Legacy `step6.generateResponse.js:160` calls `getAnswerLanguageInstruction(language.answerLanguage)` with no `intent` → glossary never applied on that path for any language. Path is dead in prod (`USE_INTENT_ROUTER=true`). Not a Section C bug; fold into a Stage 2 cleanup of the legacy tutor path. | `ask/step6.generateResponse.js:160` |
-| BUG-8 | `askApiLimiter` is keyed by raw IP. Under CGNAT / school networks, one student's usage blocks everyone. The quiz limiters already do this correctly — copy that pattern. | `middlewares/rateLimiters.js:40` |
+| ~~BUG-8~~ | ✅ **Fixed** on branch `bug8-ask-limiter-identity-key` (pending merge). The quiz limiters' inline identity-keyer is extracted to one shared `identityKeyGenerator` export; `askApiLimiter` now uses it (the 3 quiz limiters switched to the shared fn too — byte-identical behaviour). 30/min is unchanged but now measured per `user_<id>` / `guest_<id>`, falling back to IP only when neither is present — so it never has to grow with user count (Rule 4: fixed the key, not the cap). Verified by `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged. See `STAGE1_DONE.md` Section C. |
+| BUG-8b (noted, deferred → `BACKLOG.md` R6) | `globalApiLimiter` (150 req / 15 min, app-wide on every `/api` route at `app.js:60`) has the **same raw-IP defect** and, being lower-rate and route-wide, is the binding constraint for a classroom — so BUG-8 reduces but does not fully remove "one student blocks the class". Left out of BUG-8 on purpose: `globalApiLimiter` runs before `optionalAuth`, so `req.user` is unavailable there; the fix needs auth moved ahead of it (blast radius across all routes) and its own test cycle. **Must NOT be fixed by raising 150** (cap patch). **Blocking condition:** fix before onboarding any single-classroom / single-school-wifi group; fine for a cohort on separate home connections. | `middlewares/rateLimiters.js` `globalApiLimiter` |
 
 ---
 
@@ -187,7 +188,8 @@ Other test scripts: `test:chunks`, `test:study-map`, `test:curriculum-resolvers`
 `test:chat-db-models`, `rag:test-retriever`, `test:golden`,
 `test:decider-structured` (BUG-1/2), `test:choose-course-memory` (BUG-3),
 `test:decider-scope` (BUG-4), `test:topic-id-lookup` (BUG-5),
-`test:no-cache-fallback` (BUG-6), `test:glossary-devanagari` (BUG-7)
+`test:no-cache-fallback` (BUG-6), `test:glossary-devanagari` (BUG-7),
+`test:ask-limiter-identity` (BUG-8)
 
 ### ⚠️ Two prescribed test commands are broken on `main` (verified 2026-08-28)
 
@@ -237,16 +239,17 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 |---|---|
 | A — Repository hygiene | ✅ 5/5 |
 | B — Infrastructure | I2, I3 ✅ verified. I1 (Render paid), I4 (error monitoring), I5 (Redis paid) **deferred by owner** with accepted-risk notes in `STAGE1_DONE.md`. |
-| C — The 8 bugs | **BUG-1..BUG-7 ✅** merged. BUG-8 not started. |
+| C — The 8 bugs | **BUG-1..BUG-7 ✅** merged. **BUG-8 ✅** fixed, pending merge (branch `bug8-ask-limiter-identity-key`). Section C complete once BUG-8 merges. Follow-on `globalApiLimiter` (BUG-8b) parked in `BACKLOG.md` R6. |
 | D — Testing | Not started. Note: `test:chat-db-models` and `test:golden` are broken/no-op on `main` — see §5. |
 | E — Real students | Not started. |
 | F — Legal & student safety | Not started. |
 | G — Operations | Not started. |
 
-**Next task:** BUG-8 (`askApiLimiter` keyed by raw IP — under CGNAT / school
-networks one student blocks everyone; copy the quiz limiter's identity-keyed
-pattern — `middlewares/rateLimiters.js:40`). Same protocol: new branch,
-failing-test → fix → passing-test, Rule 4.
+**Next task:** merge BUG-8 (branch `bug8-ask-limiter-identity-key`) when the owner
+says so — that completes Section C (all 8 bugs). Then Section D (testing) is the
+next Stage 1 block. **Before any single-classroom / school-wifi onboarding:** fix
+`globalApiLimiter` (BACKLOG R6 / BUG-8b) — same raw-IP cause, must not be patched
+by raising the number.
 
 **Frontend build break — FIXED 2026-08-29** (branch `frontend-vercel-build-fix`).
 Every Vercel deploy since the 2026-08-28 `seo-work` merge failed: the build ran
