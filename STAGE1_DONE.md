@@ -174,7 +174,7 @@ No fix is marked done on assertion alone.
       path is dead in production (`USE_INTENT_ROUTER=true`). Tracked in
       `PROJECT_STATE.md` §4.
 - [x] **BUG-8 fix** — `askApiLimiter` keyed by identity, not raw IP
-      (branch `bug8-ask-limiter-identity-key`, pending merge).
+      (merged to `main` 2026-09-09, `--no-ff`, `1086b36`).
       `askApiLimiter` had **no** `keyGenerator`, so express-rate-limit keyed the
       30-req/min bucket by raw client IP. Under CGNAT / school / coaching /
       mobile-carrier networks, hundreds of students share one public IP — and so
