@@ -12,6 +12,14 @@ const chatSessionSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    // Set once on creation for a guest's session (via updateChatSession
+    // $setOnInsert, from step7). Nulled when the session is claimed on login
+    // (claimGuestData). Lets a guest's chats be transferred to their account —
+    // and, until then, be found by guest id. See GUEST_SERVERSIDE_PLAN.md.
+    guestId: {
+      type: String,
+      default: null,
+    },
     mode: {
       type: String,
       enum: ['guest', 'logged_in'],
@@ -159,6 +167,16 @@ const chatSessionSchema = new mongoose.Schema(
 // Compound index for P2-T5 sessions list query: find by userId, sort by recency.
 // Without this, MongoDB does a full collection scan — O(n) at any scale.
 chatSessionSchema.index({ userId: 1, lastMessageAt: -1 });
+
+// Guest-owned sessions lookup — used by the login claim
+// (claimGuestData: updateMany({ guestId, userId: null })). Non-unique (a guest
+// can have many sessions). Partial on { $type: 'string' } so the null rows that
+// every logged-in session carries (schema default) are not indexed — same
+// reasoning as the guest index on quiz_attempts / chapter_progress.
+chatSessionSchema.index(
+  { guestId: 1 },
+  { partialFilterExpression: { guestId: { $type: 'string' } } }
+);
 
 export const ChatSession =
   mongoose.models.ChatSession || mongoose.model('ChatSession', chatSessionSchema);

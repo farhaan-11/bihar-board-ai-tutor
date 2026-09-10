@@ -286,6 +286,8 @@ export const saveAndRespond = async (
   }
 
   // Single atomic MongoDB op: chatState $set + messageCount $inc + totalTokensUsed $inc + $setOnInsert immutables.
+  // guestId is stamped here (from the ask pipeline identity) so a guest's chat
+  // session can be claimed onto their account at login — see GUEST_SERVERSIDE_PLAN.md.
   const updatedSession = await updateChatSession(
     sessionId,
     {
@@ -293,7 +295,7 @@ export const saveAndRespond = async (
       chatStateInc,
       topLevelInc: { totalTokensUsed: tokenUsage },
     },
-    { userId, sessionType }
+    { userId, guestId, sessionType }
   );
 
   // ─── Cross-session chapter progress write (single source of truth) ──────

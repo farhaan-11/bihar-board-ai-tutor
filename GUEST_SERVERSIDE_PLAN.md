@@ -414,6 +414,34 @@ client UUID — accepted via the legacy path — until Phase 5.
 - **DoD:** test passes; existing session tests unaffected; baseline green.
 - **Rollback:** remove the field + the two threaded args. Old rows simply never had `guestId` — no migration needed.
 
+**✅ RESULT — 2026-09-10, branch `guestID`:**
+
+| Check | Result |
+|---|---|
+| `npm run test:guest-session-stamp` *(new, live DB)* | PASS — guest turn → `{guestId, userId:null, mode:"guest"}`; logged-in turn → `{userId, guestId:null, mode:"logged_in"}`; `guestId` immutable across turns (`$setOnInsert`); identity-less turn → `guestId:null`, no error; partial index declared |
+| `node scripts/test-p2-t2-schema.js` (existing session schema — regression) | PASS — all 16 assertions, incl. sessionType immutability + compound index |
+| Migration `scripts/create-chat-session-guest-index.js` run on dev DB | `guestId_1` present and **partial**: `{"key":{"guestId":1},"partialFilterExpression":{"guestId":{"$type":"string"}}}` |
+| `test:guest-token`, `test:attach-guest`, `test:ask-limiter-identity` | Still PASS |
+| Baseline (`test:chunks` 17/17, `test:study-map`, `test:curriculum-resolvers`) | Still green |
+| `node --check` (4 edited/new files) + import-smoke `step7` | Clean |
+
+**Files created:** `backend/scripts/test-guest-session-stamp.js`,
+`backend/scripts/create-chat-session-guest-index.js` (matches the BUG-5
+`create-*-index.js` precedent — idempotent).
+**Files edited:** `chatSession.model.js` (+`guestId` field, +partial `{guestId:1}`
+index), `chatSession.service.js` (`updateChatSession` accepts + `$setOnInsert`s
+`guestId`), `step7.saveAndRespond.js` (passes `guestId` into the meta — already in
+scope from the pipeline identity), `package.json` (+`test:guest-session-stamp`).
+
+**Behaviour:** every guest chat session created from here on carries its `gid`,
+immutable, ready for the login claim in Phase 4. Pre-Phase-3 guest sessions have
+no `guestId` and are not claimable — acceptable (pre-launch guest chat volume
+is ~0). Nothing reads `guestId` yet.
+
+**Owner deploy step:** run `node scripts/create-chat-session-guest-index.js`
+against prod once (or rely on Mongoose `autoIndex` on next boot) — same as the
+BUG-5 index step.
+
 ### Phase 4 — Claim chat sessions on login → fixes P2 (backend)
 
 - **Goal:** login transfers guest chat (and everything else) to the user; guest chat appears in the sidebar.
