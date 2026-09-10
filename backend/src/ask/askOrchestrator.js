@@ -18,7 +18,7 @@
  *   Step 6 → generateResponse.js  Tutor LLM: generate the student-facing answer     ← 2nd LLM call
  *   Step 7 → saveAndRespond.js    Save to MongoDB, build and return the API response
  *
- * READING TIP FOR JUNIOR DEVELOPERS:
+ * READING TIP FOR JUNIOR DEVELOPERS:ASA
  *   If you want to understand any specific part, open the step file directly.
  *   Each step file has comments explaining what it does, what it returns, and why.
  */
