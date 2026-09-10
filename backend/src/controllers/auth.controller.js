@@ -7,6 +7,7 @@ import ApiError from '../utils/ApiError.js';
 import { sendResponse } from '../utils/sendResponse.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../auth/emailHelpers.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../auth/tokenHelpers.js';
+import { generateGuestToken } from '../auth/guestTokenHelpers.js';
 import { claimGuestData } from '../services/chapterProgress.service.js';
 
 // Simple email format check — not too strict, just catches obvious mistakes
@@ -631,6 +632,35 @@ export const exchangeOAuthCode = async (req, res, next) => {
 
 // Same UUID format guestRateLimit.js validates on the way in.
 const GUEST_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * POST /api/v1/auth/guest
+ * Issues a server-signed guest identity token. The browser stores it and sends
+ * it as the X-Guest-Id header instead of a self-generated UUID, so guest ids can
+ * no longer be fabricated or rotated to bypass the guest turn limit.
+ *
+ * Optional body { legacyGuestId }: during the transition window a browser that
+ * still holds an old client-generated UUID passes it here once, so its existing
+ * guest progress (chapter_progress, quiz history) is preserved under the new
+ * signed token. Ignored unless it is a well-formed UUID.
+ *
+ * IP-rate-limited (guestMintLimiter). Stateless — no DB write. Never fails: the
+ * worst case for the caller is retrying.
+ */
+export const issueGuestToken = async (req, res) => {
+  const legacy = req.body?.legacyGuestId;
+  const adoptGid =
+    typeof legacy === 'string' && GUEST_ID_REGEX.test(legacy.trim())
+      ? legacy.trim()
+      : undefined;
+
+  const guestToken = generateGuestToken(adoptGid);
+
+  return sendResponse(res, 200, {
+    message: 'Guest token issued.',
+    data: { guestToken },
+  });
+};
 
 /**
  * POST /api/v1/auth/claim-guest-progress

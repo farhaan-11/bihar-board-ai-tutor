@@ -130,6 +130,14 @@ export const validateEnv = () => {
     missing.push('JWT_REFRESH_SECRET');
   }
 
+  // Guest identity token secret — signs the server-minted guest tokens that
+  // replace client-generated guest ids (see auth/guestTokenHelpers.js). Same
+  // class as the JWT secrets above: presence-checked, not isRealKey() (a short
+  // but real secret is legitimate; the weak-secret warning below covers length).
+  if (!process.env.GUEST_TOKEN_SECRET || !process.env.GUEST_TOKEN_SECRET.trim()) {
+    missing.push('GUEST_TOKEN_SECRET');
+  }
+
   // Google OAuth — required for the "Continue with Google" flow. If missing, the
   // failure is silent (no thrown error — google-auth-library happily builds a URL
   // with an empty client_id), so this is the one auth flow that fails without ever
@@ -166,6 +174,12 @@ export const validateEnv = () => {
   if (process.env.JWT_REFRESH_SECRET.trim().length < MIN_JWT_SECRET_LENGTH) {
     console.warn(
       `[Zuno] ⚠️  JWT_REFRESH_SECRET is only ${process.env.JWT_REFRESH_SECRET.trim().length} characters — ` +
+        `recommend at least ${MIN_JWT_SECRET_LENGTH} random characters for production.`
+    );
+  }
+  if (process.env.GUEST_TOKEN_SECRET.trim().length < MIN_JWT_SECRET_LENGTH) {
+    console.warn(
+      `[Zuno] ⚠️  GUEST_TOKEN_SECRET is only ${process.env.GUEST_TOKEN_SECRET.trim().length} characters — ` +
         `recommend at least ${MIN_JWT_SECRET_LENGTH} random characters for production.`
     );
   }

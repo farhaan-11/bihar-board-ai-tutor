@@ -155,3 +155,25 @@ export const supportApiLimiter = rateLimit({
     );
   },
 });
+
+// 8. Guest Mint Limiter (Protects POST /api/v1/auth/guest — the guest-token issuer)
+// Keyed by IP because the caller has no identity yet — that is the whole point of
+// the endpoint. Deliberately generous: minting is a cheap, stateless, LLM-free op
+// with no DB write, and the expensive path (/ask) stays bounded per-token by the
+// 5-turn cap. 60/hour/IP lets a full classroom behind one NAT/CGNAT IP each obtain
+// a token without throttling real students, while still capping a script that
+// tries to farm tokens. Same shape as authApiLimiter (its closest sibling) — no
+// custom keyGenerator, so express-rate-limit's default IPv6-safe IP key applies.
+export const guestMintLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  passOnStoreError: true,
+  store: createRedisStore('rl_guest_mint:'),
+  handler: (req, res) => {
+    res.status(429).json(
+      createRateLimitResponse('Thodi der baad dobara try karein.')
+    );
+  },
+});
