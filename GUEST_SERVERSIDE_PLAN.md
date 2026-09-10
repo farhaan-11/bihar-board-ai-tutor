@@ -506,6 +506,39 @@ body/legacy paths entirely, leaving only the unforgeable signed token.
 - **DoD:** build clean; owner confirms the sidebar shows the claimed guest chat.
 - **Rollback:** frontend revert restores the client-UUID header; backend still accepts it because `GUEST_LEGACY_ACCEPT=true` until Phase 6.
 
+**✅ RESULT — 2026-09-10, branch `guestID` (frontend only — backend untouched):**
+
+| Check | Result |
+|---|---|
+| `cd frontend && npm run build` | Clean — `✓ built in ~5s`, no errors/warnings |
+
+**Design:** the localStorage key `zuno-guest-id` is **reused** — its *value* changes
+from a client UUID to a server-signed token. Every existing reader
+(`axiosInstance`, `tutorApi`, `AuthCallback`, `LoginPage`, `useLogout`) keeps
+working; it just carries a token now. The backend accepts a stale UUID during the
+transition, so nothing breaks between deploy and the first mint.
+
+**Files created:** `frontend/src/utils/guestToken.js` — `ensureGuestToken()`
+(idempotent; POSTs `/api/v1/auth/guest`, hands any stored legacy UUID over as
+`legacyGuestId` for adoption; on any failure leaves what was there),
+`getGuestIdHeader()`, `clearGuestToken()`.
+**Files edited:**
+- `main.jsx` — `ensureGuestToken()` fire-and-forget right after `injectStore`, earliest point, never blocks render.
+- `axiosInstance.js` — `getGuestId()` now just reads `zuno-guest-id` (no UUID generation); the interceptor sets `X-Guest-Id` only when a value exists.
+- `tutorApi.js` — same `getGuestId()` change; `askTutor` `await ensureGuestToken()` when a guest has no id yet (the backend rejects a guest `/ask` with no `X-Guest-Id`, so this closes the first-paint race deterministically for the one endpoint that can't degrade).
+- `authService.js` — `claimGuestProgress` sends the identity in the `X-Guest-Id` header (token or legacy UUID), not the body.
+- `useLogout.js` — `ensureGuestToken()` after clearing, so a logged-out visitor gets a fresh identity without a reload.
+
+`AuthCallback.jsx` / `LoginPage.jsx` unchanged — they read the key, pass it to
+`claimGuestProgress`, remove it; all value-agnostic.
+
+**Owner interactive test (P2 acceptance):**
+1. Fresh browser / cleared storage → open app as guest. In devtools, `localStorage['zuno-guest-id']` should become a long JWT (three dot-separated parts), and `POST /api/v1/auth/guest` should show `200` in the network tab.
+2. Ask 1–2 questions as guest.
+3. Log in (email or Google).
+4. **The guest chat should appear in the sidebar.** Also check `POST /claim-guest-progress` `200` with `chatSessionsTransferred ≥ 1` in the response.
+5. Log out → `zuno-guest-id` re-mints to a new token; guest ask still works.
+
 ### Phase 6 — Remove legacy acceptance + finalize (backend + config)
 
 - **Goal:** close the forgeable path for good.

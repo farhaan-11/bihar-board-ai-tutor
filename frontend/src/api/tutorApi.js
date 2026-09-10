@@ -3,16 +3,11 @@ import { store } from '../store/store.js';
 import { parse } from 'partial-json';
 import { setCredentials, clearCredentials } from '../store/slices/authSlice.js';
 import { refreshAccessToken } from '../services/axios/authService.js';
+import { ensureGuestToken } from '../utils/guestToken.js';
 
-const getGuestId = () => {
-  const GUEST_ID_KEY = 'zuno-guest-id';
-  let guestId = localStorage.getItem(GUEST_ID_KEY);
-  if (!guestId) {
-    guestId = crypto.randomUUID();
-    localStorage.setItem(GUEST_ID_KEY, guestId);
-  }
-  return guestId;
-};
+// The guest identity is a server-minted token stored under `zuno-guest-id`.
+// The browser no longer invents its own id.
+const getGuestId = () => localStorage.getItem('zuno-guest-id') || null;
 
 export const fetchStudyMap = async () => {
   try {
@@ -237,10 +232,17 @@ export const askTutor = async ({ question, studyMode, chapterId, sessionId }, si
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
   const token = store.getState().auth?.accessToken;
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Guest-Id': getGuestId(),
-  };
+
+  // A brand-new guest may reach /ask before main.jsx's ensureGuestToken() has
+  // resolved — mint it now so the request carries an identity (the backend
+  // rejects a guest /ask with no X-Guest-Id).
+  if (!token && !getGuestId()) {
+    await ensureGuestToken();
+  }
+
+  const headers = { 'Content-Type': 'application/json' };
+  const guestId = getGuestId();
+  if (guestId) headers['X-Guest-Id'] = guestId;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }

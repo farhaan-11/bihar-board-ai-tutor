@@ -83,14 +83,22 @@ export const exchangeAuthCode = async (code) => {
 };
 
 // POST /api/v1/auth/claim-guest-progress
-// Transfers a guest's chapter progress onto the now-authenticated user.
-// Best-effort — never throws, so a failure here can't block the login flow.
-export const claimGuestProgress = async (accessToken, guestId) => {
+// Transfers a guest's chapter progress + quiz history + chat sessions onto the
+// now-authenticated user. The guest identity travels in the X-Guest-Id header
+// (a server-signed token, or a legacy UUID mid-transition) — the backend reads
+// it there, not from the body. Best-effort — never throws, so a failure here
+// can't block the login flow.
+export const claimGuestProgress = async (accessToken, guestIdOrToken) => {
   try {
     const { data } = await authAxios.post(
       '/api/v1/auth/claim-guest-progress',
-      { guestId },
-      { headers: { Authorization: `Bearer ${accessToken}` } }
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          ...(guestIdOrToken ? { 'X-Guest-Id': guestIdOrToken } : {}),
+        },
+      }
     );
     return data?.data || null;
   } catch (error) {

@@ -36,14 +36,11 @@ const retryRequest = (originalRequest, token) => {
   return axiosInstance(originalRequest);
 };
 
-const getGuestId = () => {
-  let id = localStorage.getItem('zuno-guest-id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('zuno-guest-id', id);
-  }
-  return id;
-};
+// The guest identity is a server-minted token stored under `zuno-guest-id`
+// (see utils/guestToken.js — ensureGuestToken() puts it there on app load).
+// The browser no longer invents its own id. Null only for the brief window
+// before the first mint lands.
+const getGuestId = () => localStorage.getItem('zuno-guest-id') || null;
 
 // Attach Bearer token to outgoing requests if we have one in the store.
 // Also attach X-Guest-Id so unauthenticated users' chapter progress is tracked.
@@ -52,7 +49,8 @@ axiosInstance.interceptors.request.use((config) => {
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   } else {
-    config.headers['X-Guest-Id'] = getGuestId();
+    const guestId = getGuestId();
+    if (guestId) config.headers['X-Guest-Id'] = guestId;
   }
   return config;
 });

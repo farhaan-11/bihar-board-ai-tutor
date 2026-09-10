@@ -15,10 +15,15 @@ import AppInitializer from './components/AppInitializer.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { store, persistor } from './store/store.js';
 import { injectStore } from './services/axios/axiosInstance.js';
+import { ensureGuestToken } from './utils/guestToken.js';
 import zunoTheme from './theme/zunoTheme.js';
 
 // Wire Redux store into axiosInstance before any components mount
 injectStore(store);
+
+// Mint / upgrade the server-signed guest token as early as possible so it is in
+// place before the first guest request. Fire-and-forget — never blocks render.
+ensureGuestToken();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
