@@ -7,6 +7,7 @@ import ApiError from '../utils/ApiError.js';
 import { sendResponse } from '../utils/sendResponse.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../auth/emailHelpers.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../auth/tokenHelpers.js';
+import { generateGuestToken, verifyGuestToken } from '../auth/guestTokenHelpers.js';
 import { claimGuestData } from '../services/chapterProgress.service.js';
 
 // Simple email format check — not too strict, just catches obvious mistakes
@@ -629,30 +630,46 @@ export const exchangeOAuthCode = async (req, res, next) => {
   }
 };
 
-// Same UUID format guestRateLimit.js validates on the way in.
-const GUEST_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/**
+ * POST /api/v1/auth/guest
+ * Issues a server-signed guest identity token wrapping a fresh random gid. The
+ * browser stores it and sends it as the X-Guest-Id header instead of a
+ * self-generated UUID, so guest ids can no longer be fabricated or rotated to
+ * bypass the guest turn limit.
+ *
+ * IP-rate-limited (guestMintLimiter). Stateless — no DB write. Never fails: the
+ * worst case for the caller is retrying.
+ */
+export const issueGuestToken = async (_req, res) => {
+  return sendResponse(res, 200, {
+    message: 'Guest token issued.',
+    data: { guestToken: generateGuestToken() },
+  });
+};
 
 /**
  * POST /api/v1/auth/claim-guest-progress
- * Called once, right after login/register/OAuth success, with the guestId
- * that was sitting in the browser's localStorage. Transfers that guest's
- * chapter_progress + study_events onto the now-authenticated user so a
- * student who studied as a guest doesn't lose progress on signing up.
- * Never blocks or fails the login flow — an invalid/missing guestId is a
- * harmless no-op, not an error.
+ * Called once, right after login/register/OAuth success. Transfers the guest's
+ * chapter_progress + study_events + quiz history + chat sessions onto the
+ * now-authenticated user so a student who studied as a guest doesn't lose
+ * anything on signing up. Never blocks or fails the login flow — no valid guest
+ * identity is a harmless no-op, not an error.
+ *
+ * The guest identity comes only from a verified signed token in the X-Guest-Id
+ * header — never a body field, which could name someone else's guest id.
  */
 export const claimGuestProgress = async (req, res, next) => {
   try {
-    const { guestId } = req.body;
+    const guestId = verifyGuestToken(req.headers['x-guest-id']);
 
-    if (!guestId || !GUEST_ID_REGEX.test(String(guestId).trim())) {
+    if (!guestId) {
       return sendResponse(res, 200, {
-        message: 'No valid guestId — nothing to claim.',
-        data: { chaptersTransferred: 0, chaptersMerged: 0 },
+        message: 'No valid guest identity — nothing to claim.',
+        data: { chaptersTransferred: 0, chaptersMerged: 0, chatSessionsTransferred: 0 },
       });
     }
 
-    const result = await claimGuestData(req.user.id, guestId.trim());
+    const result = await claimGuestData(req.user.id, guestId);
 
     return sendResponse(res, 200, {
       message: 'Guest progress claimed.',

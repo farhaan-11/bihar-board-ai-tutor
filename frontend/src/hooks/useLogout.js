@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { clearCredentials } from '../store/slices/authSlice.js';
 import { logoutUser } from '../services/axios/authService.js';
 import { clearSessionId } from '../utils/session.js';
+import { clearGuestToken, ensureGuestToken } from '../utils/guestToken.js';
 
 // Shared by the desktop account menu and the mobile account sheet.
 export function useLogout() {
@@ -17,7 +18,9 @@ export function useLogout() {
       // Even if API call fails, clear local state and redirect
     }
     clearSessionId();
-    localStorage.removeItem('zuno-guest-id');
+    clearGuestToken();
+    // Give the now-logged-out visitor a fresh guest identity (no page reload here).
+    ensureGuestToken();
     dispatch(clearCredentials());
     navigate('/');
   }, [dispatch, navigate]);

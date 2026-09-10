@@ -12,16 +12,18 @@ const createRateLimitResponse = (message) => ({
 });
 
 // Key a limiter bucket by WHO is making the request, not by where from.
-// userId for logged-in students, guestId for guests, and only a bare IP when
+// userId for logged-in students, guest id for guests, and only a bare IP when
 // neither is present. This is what keeps a whole classroom / coaching centre /
 // mobile-carrier network (all sharing one public IP under CGNAT) from sharing a
 // single bucket — each student gets their own. The per-request ceiling therefore
 // never has to grow with the user count.
-// `req.user` is attached by optionalAuth; `x-guest-id` by the frontend guest
-// session. `ipKeyGenerator` is express-rate-limit's own IPv6-safe normaliser.
+// `req.user` is attached by optionalAuth; `req.guest` by attachGuest (the single
+// trusted reader of the X-Guest-Id header — a signed guest token, or a legacy
+// bare UUID during the transition window). `ipKeyGenerator` is
+// express-rate-limit's own IPv6-safe normaliser.
 export const identityKeyGenerator = (req) => {
   if (req.user) return `user_${req.user.id}`;
-  const guestId = req.headers['x-guest-id'];
+  const guestId = req.guest?.id;
   return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
 };
 
@@ -152,6 +154,28 @@ export const supportApiLimiter = rateLimit({
   handler: (req, res) => {
     res.status(429).json(
       createRateLimitResponse('Aap bahut zyada support requests bhej chuke hain aaj. Kal try karein.')
+    );
+  },
+});
+
+// 8. Guest Mint Limiter (Protects POST /api/v1/auth/guest — the guest-token issuer)
+// Keyed by IP because the caller has no identity yet — that is the whole point of
+// the endpoint. Deliberately generous: minting is a cheap, stateless, LLM-free op
+// with no DB write, and the expensive path (/ask) stays bounded per-token by the
+// 5-turn cap. 60/hour/IP lets a full classroom behind one NAT/CGNAT IP each obtain
+// a token without throttling real students, while still capping a script that
+// tries to farm tokens. Same shape as authApiLimiter (its closest sibling) — no
+// custom keyGenerator, so express-rate-limit's default IPv6-safe IP key applies.
+export const guestMintLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  passOnStoreError: true,
+  store: createRedisStore('rl_guest_mint:'),
+  handler: (req, res) => {
+    res.status(429).json(
+      createRateLimitResponse('Thodi der baad dobara try karein.')
     );
   },
 });

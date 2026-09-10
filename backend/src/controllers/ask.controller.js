@@ -16,7 +16,8 @@ export const askQuestionController = async (req, res, next) => {
 
   try {
     const userId = req.user?.id || null;
-    const guestId = req.user ? null : (req.headers['x-guest-id'] || null);
+    // req.guest is set by attachGuest (already null when req.user is present)
+    const guestId = req.guest?.id || null;
 
     // Set a hard 60-second timeout for the LLM pipeline
     timeoutId = setTimeout(() => {

@@ -37,7 +37,11 @@
     "test:quiz-gate": "node scripts/test-quiz-gate.js",
     "test:no-cache-fallback": "node scripts/test-no-cache-fallback.js",
     "test:glossary-devanagari": "node scripts/test-glossary-devanagari.js",
-    "test:ask-limiter-identity": "node scripts/test-ask-limiter-identity.js"
+    "test:ask-limiter-identity": "node scripts/test-ask-limiter-identity.js",
+    "test:guest-token": "node scripts/test-guest-token.js",
+    "test:attach-guest": "node scripts/test-attach-guest.js",
+    "test:guest-session-stamp": "node scripts/test-guest-session-stamp.js",
+    "test:claim-chat": "node scripts/test-claim-chat.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -59,12 +59,13 @@ export const updateChatSessionLastMessageTime = async (sessionId) => {
  * @param {object} ops.topLevelInc     - Top-level fields to $inc (e.g. { totalTokensUsed: 450 })
  * @param {object} meta
  * @param {string|null} meta.userId
+ * @param {string|null} meta.guestId  - guest id for a guest's session — set once via $setOnInsert
  * @param {string} meta.sessionType    - 'focus' | 'global' — set once via $setOnInsert, never overwritten
  */
 export const updateChatSession = async (
   sessionId,
   { chatStateSet = {}, chatStateInc = {}, topLevelInc = {} },
-  { userId = null, sessionType = 'global' } = {}
+  { userId = null, guestId = null, sessionType = 'global' } = {}
 ) => {
   const setFields = {};
   const incFields = {};
@@ -84,6 +85,7 @@ export const updateChatSession = async (
   const update = {
     $setOnInsert: {
       userId,
+      guestId, // immutable — a guest's session keeps its guest id until login claim nulls it
       mode: userId ? 'logged_in' : 'guest',
       sessionType, // immutable — only applied on document creation
     },

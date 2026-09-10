@@ -1,9 +1,6 @@
 import redis from '../config/redisClient.js';
 import { env } from '../config/env.js';
 
-// Same pattern as queryCount.js — 36-char UUID with dashes
-const GUEST_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 export const guestRateLimit = async (req, res, next) => {
   // Logged-in users are not subject to the guest turn limit
   if (req.user) return next();
@@ -11,11 +8,12 @@ export const guestRateLimit = async (req, res, next) => {
   // Skip in development so guest limit doesn't block local testing
   if (process.env.NODE_ENV === 'development') return next();
 
-  const guestId = req.headers['x-guest-id'];
+  // attachGuest resolves the X-Guest-Id header into req.guest — a verified
+  // signed-token gid or a legacy UUID, already shape-validated. No identity here
+  // means no valid token/legacy id was presented.
+  const guestId = req.guest?.id;
 
-  // Require a valid UUID — prevents limitless access from requests with no/invalid guestId.
-  // Previously this guard lived in queryCount.js guest branch; moved here so it fires first.
-  if (!guestId || !GUEST_ID_REGEX.test(guestId.trim())) {
+  if (!guestId) {
     return res.status(400).json({
       success: false,
       error: {

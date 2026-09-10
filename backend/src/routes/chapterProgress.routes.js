@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { optionalAuth } from '../auth/authMiddleware.js';
+import { attachGuest } from '../auth/guestMiddleware.js';
 import {
   getChapterProgressController,
   listChapterProgressController,
@@ -8,8 +9,10 @@ import {
 
 const router = Router();
 
-// optionalAuth attaches req.user for logged-in users without blocking guests
+// optionalAuth attaches req.user for logged-in users without blocking guests;
+// attachGuest then resolves the X-Guest-Id header into req.guest.
 router.use(optionalAuth);
+router.use(attachGuest);
 
 router.get('/',              listChapterProgressController);       // GET  /api/v1/chapter-progress
 router.get('/:chapterId',    getChapterProgressController);        // GET  /api/v1/chapter-progress/:chapterId

@@ -2,7 +2,7 @@
  * quiz.controller.js
  *
  * HTTP handlers for the /api/v1/quiz routes.
- * Reads userId from req.user (auth middleware) or guestId from X-Guest-Id header
+ * Reads userId from req.user (auth middleware) or guestId from req.guest (attachGuest)
  * — same identity pattern as chapterProgress.controller.js.
  */
 
@@ -10,7 +10,7 @@ import mongoose from 'mongoose';
 import { generateQuiz } from '../services/quiz/quizGenerator.js';
 import { submitQuiz } from '../services/quiz/quizSubmitter.js';
 import { getQuizHistory, getQuizAttemptDetail } from '../services/quiz/quizHistoryService.js';
-import { QUIZ_TYPES, GUEST_ID_MAX_LENGTH, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT } from '../constants/quizConstants.js';
+import { QUIZ_TYPES, HISTORY_DEFAULT_LIMIT, HISTORY_MAX_LIMIT } from '../constants/quizConstants.js';
 import { sendResponse } from '../utils/sendResponse.js';
 import { toHistoryListResponse } from '../utils/quizResponse.js';
 import ApiError from '../utils/ApiError.js';
@@ -21,12 +21,9 @@ const extractIdentity = (req) => {
   const userId = req.user?.id || null;
   if (userId) return { userId, guestId: null };
 
-  const rawGuestId = req.headers['x-guest-id'] || null;
-  // An oversized header is either a bug or an attempt to abuse the Redis
-  // rate-limit key namespace — treat it the same as no identity at all.
-  const guestId = rawGuestId && rawGuestId.length <= GUEST_ID_MAX_LENGTH ? rawGuestId : null;
-
-  return { userId: null, guestId };
+  // req.guest is set by attachGuest — a verified signed-token gid or a legacy
+  // UUID, already shape-validated, so no length/format guard is needed here.
+  return { userId: null, guestId: req.guest?.id || null };
 };
 
 // ─── POST /api/v1/quiz/generate ───────────────────────────────────────────────

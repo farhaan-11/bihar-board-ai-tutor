@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { clearCredentials, setCredentials } from '../../store/slices/authSlice.js';
+import { getGuestIdHeader } from '../../utils/guestToken.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 
@@ -36,23 +37,17 @@ const retryRequest = (originalRequest, token) => {
   return axiosInstance(originalRequest);
 };
 
-const getGuestId = () => {
-  let id = localStorage.getItem('zuno-guest-id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('zuno-guest-id', id);
-  }
-  return id;
-};
-
 // Attach Bearer token to outgoing requests if we have one in the store.
-// Also attach X-Guest-Id so unauthenticated users' chapter progress is tracked.
+// Otherwise attach the server-minted guest token (utils/guestToken.js) as
+// X-Guest-Id so an unauthenticated visitor's progress is tracked. Null only for
+// the brief window before ensureGuestToken() (called from main.jsx) resolves.
 axiosInstance.interceptors.request.use((config) => {
   const token = storeRef?.getState().auth.accessToken;
   if (token) {
     config.headers['Authorization'] = `Bearer ${token}`;
   } else {
-    config.headers['X-Guest-Id'] = getGuestId();
+    const guestId = getGuestIdHeader();
+    if (guestId) config.headers['X-Guest-Id'] = guestId;
   }
   return config;
 });
