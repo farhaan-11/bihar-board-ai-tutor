@@ -2,18 +2,28 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
+import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
+import AutoAwesomeRounded from '@mui/icons-material/AutoAwesomeRounded';
 import AutoStoriesRounded from '@mui/icons-material/AutoStoriesRounded';
 import BiotechRounded from '@mui/icons-material/BiotechRounded';
 import BoltRounded from '@mui/icons-material/BoltRounded';
+import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
+import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded';
 import FunctionsRounded from '@mui/icons-material/FunctionsRounded';
 import HistoryRounded from '@mui/icons-material/HistoryRounded';
+import KeyboardArrowRightRounded from '@mui/icons-material/KeyboardArrowRightRounded';
 import MenuBookRounded from '@mui/icons-material/MenuBookRounded';
+import PlayArrowRounded from '@mui/icons-material/PlayArrowRounded';
 import PublicRounded from '@mui/icons-material/PublicRounded';
+import RefreshRounded from '@mui/icons-material/RefreshRounded';
+import ScheduleRounded from '@mui/icons-material/ScheduleRounded';
 import ScienceRounded from '@mui/icons-material/ScienceRounded';
 import TranslateRounded from '@mui/icons-material/TranslateRounded';
 import ShuffleRounded from '@mui/icons-material/ShuffleRounded';
+import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded';
 import ZunoMark from '../components/ZunoMark.jsx';
 import QuizModal from '../components/QuizModal.jsx';
 import { fetchStudyMap, fetchQuizHistory, fetchQuizAttemptDetail } from '../api/tutorApi.js';
@@ -26,6 +36,12 @@ const QUIZ_TYPE_LABELS = {
   chapter_gate: 'Chapter Quiz',
   chapter_practice: 'Practice Quiz',
   mix_practice: 'Mix Quiz',
+};
+
+const QUIZ_TYPE_ICONS = {
+  chapter_gate: EmojiEventsRounded,
+  chapter_practice: MenuBookRounded,
+  mix_practice: ShuffleRounded,
 };
 
 const HISTORY_PAGE_SIZE = 10;
@@ -49,16 +65,22 @@ function scoreTier(percentage) {
   return 'low';
 }
 
+function scoreColor(percentage) {
+  if (percentage >= 70) return 'var(--success)';
+  if (percentage >= 40) return 'var(--warning)';
+  return 'var(--error)';
+}
+
 // Same subject icon/title lookup as FocusModal.jsx — kept as a separate literal
 // (not imported) because FocusModal doesn't export it; duplicating a small
 // config object is simpler than introducing a shared-constants file for one map.
 const SUBJECT_META = {
-  hindi:            { title: 'Hindi',                     icon: TranslateRounded },
-  english:          { title: 'English',                   icon: AutoStoriesRounded },
-  math:             { title: 'Ganit (Math)',               icon: FunctionsRounded },
-  science:          { title: 'Vigyan (Science)',           icon: ScienceRounded },
-  'social-science': { title: 'Samajik Vigyan (Soc. Sci)', icon: PublicRounded },
-  sanskrit:         { title: 'Sanskrit',                  icon: MenuBookRounded },
+  hindi:            { title: 'Hindi',                     icon: TranslateRounded, art: '✍️', description: 'Bhasha aur sahitya practice', tint: '#FFF4E6' },
+  english:          { title: 'English',                   icon: AutoStoriesRounded, art: '📖', description: 'Language and literature', tint: '#EDF3FF' },
+  math:             { title: 'Ganit (Math)',              icon: FunctionsRounded, art: '📐', description: 'Formula aur problem practice', tint: '#F2EFFF' },
+  science:          { title: 'Vigyan (Science)',          icon: ScienceRounded, art: '🔬', description: 'Physics, Chemistry aur Biology', tint: '#EAF7F0' },
+  'social-science': { title: 'Samajik Vigyan (Soc. Sci)', icon: PublicRounded, art: '🌍', description: 'History, civics aur geography', tint: '#FFF0ED' },
+  sanskrit:         { title: 'Sanskrit',                  icon: MenuBookRounded, art: '🪷', description: 'Bhasha aur vyakaran practice', tint: '#FFF7E1' },
 };
 const SUBJECT_META_ORDER = Object.keys(SUBJECT_META);
 const DEFAULT_SUBJECT_ICON = MenuBookRounded;
@@ -69,63 +91,49 @@ const sectionIcons = {
   biology:   BiotechRounded,
 };
 
+const sectionArt = {
+  physics: '⚡',
+  chemistry: '🧪',
+  biology: '🌿',
+};
+
+const sectionDescriptions = {
+  physics: 'Light, electricity aur natural phenomena',
+  chemistry: 'Reactions, acids, metals aur carbon',
+  biology: 'Life processes, control aur environment',
+};
+
 function QuizPageHeader({ showBack, stepTitle, onBackStep, onExit }) {
   return (
-    <Box
-      component="header"
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        height: '54px',
-        px: { xs: 2, sm: 3 },
-        bgcolor: 'var(--bg-surface)',
-        borderBottom: '1px solid var(--border)',
-        flexShrink: 0,
-        gap: 2,
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
+    <Box component="header" className="quiz-page-header">
+      <Box className="quiz-page-header-brand">
         {showBack ? (
-          <Box
-            role="button"
-            tabIndex={0}
+          <IconButton
+            size="small"
             onClick={onBackStep}
-            onKeyDown={(e) => e.key === 'Enter' && onBackStep()}
             aria-label="Peeche jao"
-            sx={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 30, height: 30, flexShrink: 0,
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              '&:hover': { borderColor: 'var(--border-strong)', color: 'var(--text-primary)', bgcolor: 'var(--bg-hover)' },
-            }}
+            className="quiz-page-back-button"
           >
-            <ArrowBackRounded sx={{ fontSize: 16 }} />
-          </Box>
+            <ArrowBackRounded sx={{ fontSize: 18 }} />
+          </IconButton>
         ) : (
           <ZunoMark />
         )}
-        <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {stepTitle}
-        </Typography>
+
+        <Box sx={{ minWidth: 0 }}>
+          <Typography className="quiz-page-header-kicker">Zuno Practice</Typography>
+          <Typography className="quiz-page-header-title">{stepTitle}</Typography>
+        </Box>
       </Box>
 
-      <Box
-        role="button"
-        tabIndex={0}
+      <Button
+        size="small"
         onClick={onExit}
-        onKeyDown={(e) => e.key === 'Enter' && onExit()}
-        sx={{
-          display: 'flex', alignItems: 'center', gap: 0.5, flexShrink: 0,
-          fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer',
-          '&:hover': { color: 'var(--text-primary)' },
-        }}
+        startIcon={<ArrowBackRounded sx={{ fontSize: 16 }} />}
+        className="quiz-page-chat-button"
       >
-        Chat pe wapas
-      </Box>
+        <span className="quiz-page-chat-label">Chat pe wapas</span>
+      </Button>
     </Box>
   );
 }
@@ -191,6 +199,7 @@ function QuizPage() {
   // the newest attempt anyway, not mid-scroll through old ones).
   const refreshHistory = () => {
     setHistoryLoading(true);
+    setHistoryError(null);
     fetchQuizHistory({ limit: HISTORY_PAGE_SIZE })
       .then((data) => {
         setHistoryAttempts(data.attempts || []);
@@ -274,6 +283,9 @@ function QuizPage() {
           id,
           title: live?.hinglishTitle || live?.title || meta?.title || id,
           icon: meta?.icon || DEFAULT_SUBJECT_ICON,
+          art: meta?.art || '📘',
+          description: meta?.description || 'Chapter-wise practice',
+          tint: meta?.tint || 'var(--primary-tint)',
           available: !!live,
         };
       })
@@ -295,6 +307,15 @@ function QuizPage() {
     }
     return counts;
   }, [studyMap]);
+
+  const historyOverview = useMemo(() => {
+    const average = historyAttempts.length
+      ? Math.round(historyAttempts.reduce((sum, attempt) => sum + Number(attempt.percentage || 0), 0) / historyAttempts.length)
+      : 0;
+    const solved = historyAttempts.reduce((sum, attempt) => sum + Number(attempt.totalQuestions || 0), 0);
+    const strong = historyAttempts.filter((attempt) => Number(attempt.percentage || 0) >= 70).length;
+    return { average, solved, strong };
+  }, [historyAttempts]);
 
   const selectedSubject = useMemo(() => {
     const subjects = studyMap?.focusStudy?.subjects || [];
@@ -355,7 +376,7 @@ function QuizPage() {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'var(--bg-page)', display: 'flex', flexDirection: 'column' }}>
+    <Box className="quiz-page-root">
       <QuizPageHeader
         showBack={!!viewingAttemptId || step > 1}
         stepTitle={stepTitle}
@@ -363,261 +384,426 @@ function QuizPage() {
         onExit={goToChat}
       />
 
-      <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', px: 2, py: { xs: 3, sm: 4 } }}>
-        <Box sx={{ width: '100%', maxWidth: 640 }}>
-
-          {!viewingAttemptId && isLoading && (
-            <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', mt: 4 }}>
-              Loading...
+      <Box component="main" className="quiz-page-main">
+        <Box className="quiz-page-intro quiz-page-enter">
+          <Box>
+            <Box className="quiz-page-eyebrow"><span />Practice space</Box>
+            <Typography component="h1" className="quiz-page-heading">
+              {viewingAttemptId
+                ? 'Apna result detail mein dekho.'
+                : step === 1
+                  ? 'Practice karo. Confidence badhao.'
+                  : step === 2
+                    ? `${selectedSubject?.hinglishTitle || selectedSubject?.title || 'Subject'} practice`
+                    : `${activeSection?.hinglishTitle || activeSection?.title || 'Chapter'} quizzes`}
             </Typography>
-          )}
-
-          {!viewingAttemptId && !isLoading && loadError && (
-            <Typography sx={{ fontSize: '0.85rem', color: 'var(--error)', textAlign: 'center', mt: 4 }}>
-              {loadError}
+            <Typography className="quiz-page-subheading">
+              {viewingAttemptId
+                ? 'Har answer ke saath clear explanation diya gaya hai.'
+                : step === 1
+                  ? 'Chapter choose karo ya Mix Quiz se apni Science preparation check karo.'
+                  : step === 2
+                    ? 'Mix Quiz lo ya kisi ek section par focus karo.'
+                    : 'Ek chapter choose karo—10 MCQs ke baad instant result milega.'}
             </Typography>
-          )}
+          </Box>
 
-          {/* ── Attempt detail — replaces the picker entirely while open ── */}
-          {viewingAttemptId && (
+          <Box className="quiz-streak-card">
+            <span role="img" aria-label="Practice streak">🔥</span>
             <Box>
-              {attemptDetailLoading && (
-                <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', mt: 4 }}>
-                  Loading...
-                </Typography>
-              )}
+              <strong>Practice streak</strong>
+              <small>Roz thoda, result bada</small>
+            </Box>
+          </Box>
+        </Box>
 
-              {!attemptDetailLoading && attemptDetailError && (
-                <Typography sx={{ fontSize: '0.85rem', color: 'var(--error)', textAlign: 'center', mt: 4 }}>
-                  {attemptDetailError}
-                </Typography>
-              )}
+        <Box className="quiz-dashboard-layout">
+          <Box component="section" className="quiz-page-workspace" aria-label="Quiz selection">
+            {!viewingAttemptId && isLoading && (
+              <Box className="quiz-page-state">
+                <CircularProgress size={28} thickness={4} sx={{ color: 'var(--primary)' }} />
+                <Typography>Study Map load ho raha hai...</Typography>
+              </Box>
+            )}
 
-              {!attemptDetailLoading && attemptDetail && (
-                <>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, mb: 3, textAlign: 'center' }}>
-                    <Box className={`quiz-detail-score-ring ${scoreTier(attemptDetail.percentage)}`}>
-                      <Typography sx={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
-                        {attemptDetail.percentage}%
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.68rem', color: 'var(--text-muted)', mt: '2px' }}>
-                        {attemptDetail.score}/{attemptDetail.totalQuestions}
-                      </Typography>
-                    </Box>
-                    {attemptDetail.passed === true && (
-                      <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>
-                        Pass ho gaya
-                      </Typography>
-                    )}
-                    {attemptDetail.passed === false && (
-                      <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        70% chahiye tha
-                      </Typography>
-                    )}
+            {!viewingAttemptId && !isLoading && loadError && (
+              <Box className="quiz-page-state error">
+                <span role="img" aria-label="Error">🛠️</span>
+                <Typography>{loadError}</Typography>
+              </Box>
+            )}
+
+            {viewingAttemptId && (
+              <Box className="quiz-attempt-detail quiz-page-enter">
+                {attemptDetailLoading && (
+                  <Box className="quiz-page-state">
+                    <CircularProgress size={28} thickness={4} sx={{ color: 'var(--primary)' }} />
+                    <Typography>Result load ho raha hai...</Typography>
                   </Box>
+                )}
 
-                  {attemptDetail.results?.length > 0 && (
-                    <Box sx={{ textAlign: 'left' }}>
-                      {attemptDetail.results.map((q) => (
-                        <Box key={q.questionId} className="quiz-review-item">
-                          <Typography className="quiz-review-question">
-                            {pickText(q.text)}
-                          </Typography>
+                {!attemptDetailLoading && attemptDetailError && (
+                  <Box className="quiz-page-state error">
+                    <span role="img" aria-label="Error">🛠️</span>
+                    <Typography>{attemptDetailError}</Typography>
+                  </Box>
+                )}
 
-                          {q.options.map((opt) => {
-                            const isCorrectOption = opt.label === q.correctOption;
-                            const isWrongSelected = opt.label === q.selectedOption && !q.isCorrect;
-                            const highlightClass = isCorrectOption ? 'correct' : isWrongSelected ? 'incorrect' : '';
-                            return (
-                              <Box key={opt.label} className={`quiz-review-option ${highlightClass}`}>
-                                <span className="quiz-option-label">{opt.label}</span>
-                                <span>{pickText(opt.text)}</span>
-                              </Box>
-                            );
-                          })}
+                {!attemptDetailLoading && attemptDetail && (
+                  <>
+                    <Box className={`quiz-result-hero ${scoreTier(attemptDetail.percentage)}`}>
+                      <Box
+                        className="quiz-result-score-ring"
+                        style={{
+                          '--quiz-score': `${Math.max(0, Math.min(100, Number(attemptDetail.percentage) || 0))}%`,
+                          '--quiz-score-color': scoreColor(attemptDetail.percentage),
+                        }}
+                      >
+                        <Box>
+                          <strong>{attemptDetail.percentage}%</strong>
+                          <span>{attemptDetail.score}/{attemptDetail.totalQuestions} correct</span>
+                        </Box>
+                      </Box>
 
-                          {pickText(q.explanation) && (
-                            <Typography className="quiz-review-explanation">
-                              {pickText(q.explanation)}
-                            </Typography>
+                      <Box className="quiz-result-copy">
+                        <Box className={`quiz-result-status ${attemptDetail.passed === false ? 'retry' : 'success'}`}>
+                          {attemptDetail.passed === false
+                            ? <TrendingUpRounded sx={{ fontSize: 14 }} />
+                            : <CheckCircleRounded sx={{ fontSize: 14 }} />}
+                          <span>
+                            {attemptDetail.passed === true
+                              ? 'Chapter passed'
+                              : attemptDetail.passed === false
+                                ? 'Keep practicing'
+                                : 'Practice complete'}
+                          </span>
+                        </Box>
+                        <Typography component="h2">
+                          {attemptDetail.percentage >= 70
+                            ? 'Bahut badhiya! Concept clear hai.'
+                            : 'Achhi koshish—thoda revision aur.'}
+                        </Typography>
+                        <Typography>Har sawaal ka sahi jawab aur explanation neeche diya hai.</Typography>
+                      </Box>
+                    </Box>
+
+                    <Box className="quiz-result-stats">
+                      <Box>
+                        <span className="success"><CheckCircleRounded sx={{ fontSize: 17 }} /></span>
+                        <div><strong>{attemptDetail.score}</strong><small>Sahi jawab</small></div>
+                      </Box>
+                      <Box>
+                        <span className="error"><TrendingUpRounded sx={{ fontSize: 17 }} /></span>
+                        <div><strong>{Math.max(0, attemptDetail.totalQuestions - attemptDetail.score)}</strong><small>Galat / skipped</small></div>
+                      </Box>
+                      <Box>
+                        <span className="primary"><ScheduleRounded sx={{ fontSize: 17 }} /></span>
+                        <div><strong>{attemptDetail.timeTakenSec ? `${Math.max(1, Math.round(attemptDetail.timeTakenSec / 60))} min` : '—'}</strong><small>Total time</small></div>
+                      </Box>
+                    </Box>
+
+                    <Box className="quiz-page-section-heading">
+                      <Typography component="h2">Answer review</Typography>
+                      <Typography>Green sahi answer hai; red tumhara incorrect selection.</Typography>
+                    </Box>
+
+                    <Box className="quiz-result-review-list">
+                      {attemptDetail.results?.map((question, questionIndex) => (
+                        <Box
+                          key={question.questionId}
+                          className={`quiz-result-review-card ${question.isCorrect ? 'correct' : 'incorrect'} quiz-page-enter`}
+                          style={{ animationDelay: `${Math.min(questionIndex * 45, 260)}ms` }}
+                        >
+                          <Box className="quiz-result-question-row">
+                            {question.isCorrect
+                              ? <CheckCircleRounded sx={{ fontSize: 18, color: 'var(--success)', flexShrink: 0 }} />
+                              : <TrendingUpRounded sx={{ fontSize: 18, color: 'var(--error)', flexShrink: 0 }} />}
+                            <Typography>{questionIndex + 1}. {pickText(question.text)}</Typography>
+                          </Box>
+
+                          <Box className="quiz-result-options">
+                            {question.options.map((option) => {
+                              const isCorrectOption = option.label === question.correctOption;
+                              const isWrongSelected = option.label === question.selectedOption && !question.isCorrect;
+                              return (
+                                <Box
+                                  key={option.label}
+                                  className={`quiz-result-option ${isCorrectOption ? 'correct' : isWrongSelected ? 'incorrect' : ''}`}
+                                >
+                                  <span>{option.label}</span>
+                                  <Typography>{pickText(option.text)}</Typography>
+                                </Box>
+                              );
+                            })}
+                          </Box>
+
+                          {pickText(question.explanation) && (
+                            <Box className="quiz-result-explanation">
+                              <AutoAwesomeRounded sx={{ fontSize: 15, color: 'var(--primary)', flexShrink: 0 }} />
+                              <Typography>{pickText(question.explanation)}</Typography>
+                            </Box>
                           )}
                         </Box>
                       ))}
                     </Box>
-                  )}
-                </>
-              )}
-            </Box>
-          )}
-
-          {!viewingAttemptId && !isLoading && !loadError && step === 1 && (
-            <>
-              <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)', mb: 2.5, lineHeight: 1.5 }}>
-                Jitna practice utna confidence — koi bhi chapter chuno, ya seedha Mix Quiz try karo.
-              </Typography>
-
-              <Typography className="focus-section-label">Vishay chunno</Typography>
-              <Box className="focus-grid-3">
-                {enrichedSubjects.map((subject) => {
-                  const Icon = subject.icon;
-                  return (
-                    <button
-                      key={subject.id}
-                      type="button"
-                      disabled={!subject.available}
-                      className={`focus-item-btn ${subject.available ? 'available' : 'unavailable'}`}
-                      onClick={() => handleSubjectClick(subject)}
-                    >
-                      <Icon sx={{ fontSize: 20, color: subject.available ? 'var(--primary)' : 'var(--text-hint)', display: 'block', mb: 0.75 }} />
-                      <Typography component="span" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                        {subject.title}
-                      </Typography>
-                      <Typography component="span" sx={{ display: 'block', fontSize: '0.7rem', color: subject.available ? 'var(--primary-label)' : 'var(--text-hint)', mt: 0.5 }}>
-                        {subject.available ? `${subjectChapterCounts[subject.id] || 0} adhyaay` : 'Jald aata hai'}
-                      </Typography>
-                    </button>
-                  );
-                })}
-              </Box>
-
-              {/* ── History — past attempts, newest first ── */}
-              <Box sx={{ mt: 3.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1 }}>
-                  <HistoryRounded sx={{ fontSize: 16, color: 'var(--text-muted)' }} />
-                  <Typography className="focus-section-label" sx={{ mb: '0 !important' }}>
-                    Tumhari History
-                  </Typography>
-                </Box>
-
-                {historyLoading && (
-                  <Typography sx={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Loading...
-                  </Typography>
-                )}
-
-                {!historyLoading && historyError && (
-                  <Typography sx={{ fontSize: '0.8rem', color: 'var(--error)' }}>
-                    {historyError}
-                  </Typography>
-                )}
-
-                {!historyLoading && !historyError && historyAttempts.length === 0 && (
-                  <Box className="quiz-history-empty">
-                    <HistoryRounded sx={{ fontSize: 22, color: 'var(--text-hint)' }} />
-                    <Typography sx={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Abhi tak koi quiz attempt nahi hai.
-                    </Typography>
-                  </Box>
-                )}
-
-                {!historyLoading && !historyError && historyAttempts.length > 0 && (
-                  <>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
-                      {historyAttempts.map((attempt) => (
-                        <button
-                          key={attempt.attemptId}
-                          type="button"
-                          className={`quiz-history-card type-${attempt.quizType}`}
-                          onClick={() => handleOpenAttempt(attempt.attemptId)}
-                        >
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography component="span" sx={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {getAttemptTitle(attempt)}
-                            </Typography>
-                            <Typography component="span" sx={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', mt: 0.25 }}>
-                              {QUIZ_TYPE_LABELS[attempt.quizType] || 'Quiz'} · {formatRelativeTime(attempt.createdAt)}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                            <Typography component="span" sx={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              {attempt.score}/{attempt.totalQuestions}
-                            </Typography>
-                            <span className={`quiz-score-pill ${scoreTier(attempt.percentage)}`}>
-                              {attempt.percentage}%
-                            </span>
-                          </Box>
-                        </button>
-                      ))}
-                    </Box>
-
-                    {historyHasMore && (
-                      <Button
-                        size="small"
-                        onClick={handleLoadMoreHistory}
-                        disabled={historyLoadingMore}
-                        sx={{ mt: 1.5, textTransform: 'none', color: 'var(--text-muted)' }}
-                      >
-                        {historyLoadingMore ? 'Load ho raha hai...' : 'Aur dikhao'}
-                      </Button>
-                    )}
                   </>
                 )}
               </Box>
-            </>
-          )}
+            )}
 
-          {!viewingAttemptId && !isLoading && !loadError && step === 2 && selectedSubject && (
-            <>
-              <Typography className="focus-section-label">Mix Quiz</Typography>
-              <button type="button" className="focus-item-btn available quiz-mix-card" onClick={openMixQuiz}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <ShuffleRounded sx={{ fontSize: 20, color: 'var(--primary)' }} />
-                  <Box>
-                    <Typography component="span" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      Mix Quiz
+            {!viewingAttemptId && !isLoading && !loadError && step === 1 && (
+              <>
+                <Box className="quiz-page-hero quiz-page-enter">
+                  <Box className="quiz-page-hero-copy">
+                    <Box className="quiz-page-hero-kicker">
+                      <AutoAwesomeRounded sx={{ fontSize: 14 }} />
+                      Bihar Board practice
+                    </Box>
+                    <Typography component="h2">Apni tayari ko har chapter ke saath strong banao</Typography>
+                    <Typography>
+                      Subject choose karo, 10 MCQs solve karo aur turant dekho ki kaunsa concept revise karna hai.
                     </Typography>
-                    <Typography component="span" sx={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', mt: 0.25 }}>
-                      Poore {selectedSubject.hinglishTitle || selectedSubject.title} se 20 sawaal
-                    </Typography>
+                    <Box className="quiz-page-hero-hint">
+                      <PlayArrowRounded sx={{ fontSize: 17 }} />
+                      Neeche se subject select karke start karo
+                    </Box>
+                  </Box>
+
+                  <Box className="quiz-page-hero-visual" aria-label="Science learning illustration">
+                    <Box className="quiz-page-hero-orbit">
+                      <span className="quiz-page-hero-main-art" role="img" aria-label="Microscope">🔬</span>
+                      <span className="quiz-page-mini-art atom" role="img" aria-label="Atom">⚛️</span>
+                      <span className="quiz-page-mini-art flask" role="img" aria-label="Chemistry flask">🧪</span>
+                      <span className="quiz-page-mini-art books" role="img" aria-label="Books">📚</span>
+                    </Box>
                   </Box>
                 </Box>
-              </button>
 
-              <Typography className="focus-section-label" sx={{ mt: 2.5 }}>Ya bhaag chunno</Typography>
-              <Box className="focus-grid-3">
-                {sections.map((section) => {
-                  const SectionIcon = sectionIcons[section.title?.toLowerCase()] || MenuBookRounded;
-                  return (
+                <Box className="quiz-overview-stats">
+                  <Box className="quiz-overview-card quiz-page-enter" style={{ animationDelay: '80ms' }}>
+                    <span className="primary"><HistoryRounded sx={{ fontSize: 19 }} /></span>
+                    <Box><small>Recent attempts</small><strong>{historyAttempts.length}</strong><em>loaded history</em></Box>
+                  </Box>
+                  <Box className="quiz-overview-card quiz-page-enter" style={{ animationDelay: '130ms' }}>
+                    <span className="success"><TrendingUpRounded sx={{ fontSize: 19 }} /></span>
+                    <Box><small>Average score</small><strong>{historyOverview.average}%</strong><em>recent quizzes</em></Box>
+                  </Box>
+                  <Box className="quiz-overview-card quiz-page-enter" style={{ animationDelay: '180ms' }}>
+                    <span className="info"><CheckCircleRounded sx={{ fontSize: 19 }} /></span>
+                    <Box><small>Questions solved</small><strong>{historyOverview.solved}</strong><em>recent attempts</em></Box>
+                  </Box>
+                </Box>
+
+                <Box className="quiz-page-section-heading">
+                  <Typography component="h2">Vishay chunno</Typography>
+                  <Typography>Available subject se practice start karo.</Typography>
+                </Box>
+
+                <Box className="quiz-subject-grid">
+                  {enrichedSubjects.map((subject, subjectIndex) => {
+                    const Icon = subject.icon;
+                    return (
+                      <button
+                        key={subject.id}
+                        type="button"
+                        disabled={!subject.available}
+                        className={`quiz-subject-card quiz-page-surface-card quiz-page-enter ${subject.available ? 'available' : 'unavailable'}`}
+                        style={{ animationDelay: `${Math.min(subjectIndex * 55, 260)}ms` }}
+                        onClick={() => handleSubjectClick(subject)}
+                      >
+                        <Box className="quiz-card-top-row">
+                          <span className="quiz-card-icon" style={{ background: subject.tint }}>
+                            <Icon sx={{ fontSize: 21 }} />
+                          </span>
+                          <Box className="quiz-card-art-row">
+                            <span role="img" aria-label={subject.title}>{subject.art}</span>
+                            {subject.available && (
+                              <span className="quiz-card-arrow"><KeyboardArrowRightRounded sx={{ fontSize: 18 }} /></span>
+                            )}
+                          </Box>
+                        </Box>
+                        <strong>{subject.title}</strong>
+                        <p>{subject.description}</p>
+                        <small>{subject.available ? `${subjectChapterCounts[subject.id] || 0} adhyaay` : 'Jald aa raha hai'}</small>
+                      </button>
+                    );
+                  })}
+                </Box>
+              </>
+            )}
+
+            {!viewingAttemptId && !isLoading && !loadError && step === 2 && selectedSubject && (
+              <>
+                <Box className="quiz-smart-mix-card quiz-page-enter">
+                  <Box className="quiz-smart-mix-copy">
+                    <span className="quiz-smart-mix-icon"><ShuffleRounded sx={{ fontSize: 25 }} /></span>
+                    <Box>
+                      <Typography component="h2">Smart Mix Quiz</Typography>
+                      <Typography>
+                        Poore {selectedSubject.hinglishTitle || selectedSubject.title} se balanced sawaal—quick revision ke liye best.
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Button variant="contained" onClick={openMixQuiz} endIcon={<PlayArrowRounded />}>
+                    20 sawaal shuru karo
+                  </Button>
+                </Box>
+
+                <Box className="quiz-page-section-heading">
+                  <Typography component="h2">Ya section chunno</Typography>
+                  <Typography>Ek section par focused practice karo.</Typography>
+                </Box>
+
+                <Box className="quiz-section-grid">
+                  {sections.map((section, sectionIndex) => {
+                    const sectionKey = section.title?.toLowerCase();
+                    const SectionIcon = sectionIcons[sectionKey] || MenuBookRounded;
+                    return (
+                      <button
+                        key={section.id}
+                        type="button"
+                        className="quiz-section-card quiz-page-surface-card quiz-page-enter"
+                        style={{ animationDelay: `${sectionIndex * 70}ms` }}
+                        onClick={() => handleSectionClick(section)}
+                      >
+                        <Box className="quiz-card-top-row">
+                          <span className="quiz-card-icon"><SectionIcon sx={{ fontSize: 21 }} /></span>
+                          <Box className="quiz-card-art-row">
+                            <span role="img" aria-label={section.title}>{sectionArt[sectionKey] || '📘'}</span>
+                            <span className="quiz-card-arrow"><KeyboardArrowRightRounded sx={{ fontSize: 18 }} /></span>
+                          </Box>
+                        </Box>
+                        <strong>{section.hinglishTitle || section.title}</strong>
+                        <p>{sectionDescriptions[sectionKey] || 'Chapter-wise focused practice'}</p>
+                        <small>{section.chapters?.length || 0} adhyaay</small>
+                      </button>
+                    );
+                  })}
+                </Box>
+              </>
+            )}
+
+            {!viewingAttemptId && !isLoading && !loadError && step === 3 && activeSection && (
+              <>
+                <Box className="quiz-selected-section-card quiz-page-enter">
+                  <span className="quiz-card-icon">
+                    {React.createElement(sectionIcons[activeSection.title?.toLowerCase()] || MenuBookRounded, { sx: { fontSize: 21 } })}
+                  </span>
+                  <Box>
+                    <Typography component="h2">{activeSection.hinglishTitle || activeSection.title}</Typography>
+                    <Typography>{activeSection.chapters.length} chapter quizzes available</Typography>
+                  </Box>
+                </Box>
+
+                <Box className="quiz-page-section-heading">
+                  <Typography component="h2">Adhyaay chunno</Typography>
+                  <Typography>Har quiz mein 10 MCQs aur instant answer review milega.</Typography>
+                </Box>
+
+                <Box className="quiz-chapter-grid">
+                  {activeSection.chapters.map((chapter, chapterIndex) => (
                     <button
-                      key={section.id}
+                      key={chapter.id}
                       type="button"
-                      className="focus-item-btn available"
-                      onClick={() => handleSectionClick(section)}
+                      className="quiz-chapter-card quiz-page-surface-card quiz-page-enter"
+                      style={{ animationDelay: `${Math.min(chapterIndex * 45, 260)}ms` }}
+                      onClick={() => openChapterQuiz(chapter)}
                     >
-                      <SectionIcon sx={{ fontSize: 20, color: 'var(--primary)', display: 'block', mb: 0.75 }} />
-                      <Typography component="span" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-                        {section.hinglishTitle || section.title}
-                      </Typography>
-                      <Typography component="span" sx={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', mt: 0.5 }}>
-                        {section.chapters?.length || 0} adhyaay
-                      </Typography>
+                      <span className="quiz-chapter-number">{chapter.number}</span>
+                      <Box>
+                        <strong>{chapter.hinglishTitle || chapter.title}</strong>
+                        <small><ScheduleRounded sx={{ fontSize: 12 }} />10 MCQs · instant result</small>
+                      </Box>
+                      <span className="quiz-card-arrow"><KeyboardArrowRightRounded sx={{ fontSize: 18 }} /></span>
                     </button>
-                  );
-                })}
+                  ))}
+                </Box>
+              </>
+            )}
+          </Box>
+
+          <Box component="aside" className="quiz-history-panel" aria-label="Quiz history">
+            <Box className="quiz-history-header">
+              <Box className="quiz-history-title-row">
+                <Box className="quiz-history-title">
+                  <span><HistoryRounded sx={{ fontSize: 19 }} /></span>
+                  <Box>
+                    <Typography component="h2">Quiz History</Typography>
+                    <Typography>Recent performance</Typography>
+                  </Box>
+                </Box>
+                <IconButton size="small" onClick={refreshHistory} aria-label="Quiz history refresh karo">
+                  <RefreshRounded sx={{ fontSize: 17 }} />
+                </IconButton>
               </Box>
-            </>
-          )}
 
-          {!viewingAttemptId && !isLoading && !loadError && step === 3 && activeSection && (
-            <Box className="focus-grid-2">
-              {activeSection.chapters.map((chapter) => (
-                <button
-                  key={chapter.id}
-                  type="button"
-                  className="focus-item-btn available"
-                  onClick={() => openChapterQuiz(chapter)}
-                >
-                  <Typography component="span" sx={{ display: 'block', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text-muted)', mb: 0.5 }}>
-                    Adhyaay {chapter.number}
-                  </Typography>
-                  <Typography component="span" sx={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                    {chapter.hinglishTitle || chapter.title}
-                  </Typography>
-                </button>
-              ))}
+              <Box className="quiz-history-summary">
+                <Box><strong>{historyAttempts.length}</strong><small>Recent</small></Box>
+                <Box><strong>{historyOverview.strong}</strong><small>70%+</small></Box>
+                <Box><strong>{historyOverview.average}%</strong><small>Average</small></Box>
+              </Box>
             </Box>
-          )}
 
+            <Box className="quiz-history-list">
+              {historyLoading && (
+                <Box className="quiz-history-state">
+                  <CircularProgress size={24} thickness={4} sx={{ color: 'var(--primary)' }} />
+                  <Typography>History load ho rahi hai...</Typography>
+                </Box>
+              )}
+
+              {!historyLoading && historyError && (
+                <Box className="quiz-history-state error"><Typography>{historyError}</Typography></Box>
+              )}
+
+              {!historyLoading && !historyError && historyAttempts.length === 0 && (
+                <Box className="quiz-history-state empty">
+                  <span role="img" aria-label="Notebook">📒</span>
+                  <Typography component="strong">History abhi khaali hai</Typography>
+                  <Typography>Pehla quiz complete karte hi result yahan dikhega.</Typography>
+                </Box>
+              )}
+
+              {!historyLoading && !historyError && historyAttempts.map((attempt, attemptIndex) => {
+                const AttemptIcon = QUIZ_TYPE_ICONS[attempt.quizType] || MenuBookRounded;
+                const badge = attempt.passed === true ? 'Pass' : attempt.passed === false ? 'Retry' : 'Practice';
+                return (
+                  <button
+                    key={attempt.attemptId}
+                    type="button"
+                    className="quiz-history-attempt quiz-page-enter"
+                    style={{
+                      animationDelay: `${Math.min(attemptIndex * 45, 240)}ms`,
+                      '--quiz-score': `${Math.max(0, Math.min(100, Number(attempt.percentage) || 0))}%`,
+                      '--quiz-score-color': scoreColor(attempt.percentage),
+                    }}
+                    onClick={() => handleOpenAttempt(attempt.attemptId)}
+                  >
+                    <span className="quiz-history-ring"><AttemptIcon sx={{ fontSize: 15 }} /></span>
+                    <Box>
+                      <strong>{getAttemptTitle(attempt)}</strong>
+                      <small>{attempt.score}/{attempt.totalQuestions} correct · {formatRelativeTime(attempt.createdAt)}</small>
+                    </Box>
+                    <span className={`quiz-history-score ${scoreTier(attempt.percentage)}`}>
+                      <strong>{attempt.percentage}%</strong>
+                      <small className={attempt.passed === false ? 'retry' : attempt.passed === true ? 'pass' : 'practice'}>{badge}</small>
+                    </span>
+                  </button>
+                );
+              })}
+
+              {!historyLoading && !historyError && historyHasMore && (
+                <Button
+                  size="small"
+                  onClick={handleLoadMoreHistory}
+                  disabled={historyLoadingMore}
+                  className="quiz-history-more"
+                >
+                  {historyLoadingMore ? 'Load ho raha hai...' : 'Aur history dikhao'}
+                </Button>
+              )}
+            </Box>
+          </Box>
         </Box>
       </Box>
 

@@ -4,12 +4,21 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import Fade from '@mui/material/Fade';
+import Grow from '@mui/material/Grow';
 import CloseRounded from '@mui/icons-material/CloseRounded';
 import ArrowBackRounded from '@mui/icons-material/ArrowBackRounded';
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import EmojiEventsRounded from '@mui/icons-material/EmojiEventsRounded';
 import TrendingUpRounded from '@mui/icons-material/TrendingUpRounded';
 import ShuffleRounded from '@mui/icons-material/ShuffleRounded';
 import CheckCircleRounded from '@mui/icons-material/CheckCircleRounded';
+import CancelRounded from '@mui/icons-material/CancelRounded';
+import ErrorOutlineRounded from '@mui/icons-material/ErrorOutlineRounded';
+import HistoryRounded from '@mui/icons-material/HistoryRounded';
+import ReplayRounded from '@mui/icons-material/ReplayRounded';
+import SkipNextRounded from '@mui/icons-material/SkipNextRounded';
 import { generateQuiz, submitQuiz } from '../api/tutorApi.js';
 
 // Each quizType gets its own identity — icon, color, and a plain-language purpose
@@ -22,24 +31,38 @@ const TYPE_CONFIG = {
     purpose: 'Pass karke chapter complete karo',
     icon: EmojiEventsRounded,
     fg: 'var(--primary)',
+    accent: true, // gets the tinted/pulsing badge — this is the one with stakes
   },
   chapter_practice: {
     label: 'Practice Quiz',
     purpose: 'Bas practice ke liye, koi asar nahi',
     icon: TrendingUpRounded,
     fg: 'var(--text-secondary)',
+    accent: false,
   },
   mix_practice: {
     label: 'Mix Quiz',
     purpose: 'Alag-alag chapters ke sawaal',
     icon: ShuffleRounded,
     fg: 'var(--text-secondary)',
+    accent: false,
   },
 };
 
 // Server sends all 3 languages — product rule is Zuno always speaks Hinglish,
 // so that's the default; en is only a fallback if hinglish is somehow empty.
 const pickText = (text) => text?.hinglish || text?.en || '';
+
+// Same 3-tier split used by .quiz-score-pill / .quiz-detail-score-ring
+// elsewhere in the app (history list, attempt detail) — high = pass
+// territory, mid = close, low = needs another attempt. Mirrors the 70%
+// gate threshold shown on the confirm screen. Adjust if your actual
+// tiering logic elsewhere uses different cutoffs.
+const scoreTier = (percentage) => {
+  if (percentage >= 70) return 'high';
+  if (percentage >= 40) return 'mid';
+  return 'low';
+};
 
 function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClose, onQuizComplete }) {
   const [screen, setScreen] = useState('loading'); // 'loading' | 'quiz' | 'confirm' | 'error'
@@ -246,6 +269,7 @@ function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClo
     ? quizData.questions.filter((q) => answers[q.questionId]?.selectedOption).length
     : 0;
   const skippedCount = quizData ? quizData.questionCount - answeredCount : 0;
+  const resultTier = result ? scoreTier(result.percentage) : null;
 
   return (
     <Dialog
@@ -266,24 +290,29 @@ function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClo
       <Box className="focus-modal-header">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
           {screen === 'quiz' && currentIndex > 0 && (
-            <IconButton
-              size="small"
-              onClick={handlePrev}
-              aria-label="Pichla sawaal"
-              sx={{
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-md)',
-                color: 'var(--text-muted)',
-                width: 30, height: 30,
-                flexShrink: 0,
-                '&:hover': { borderColor: 'var(--border-strong)', color: 'var(--text-primary)', bgcolor: 'var(--bg-hover)' },
-              }}
-            >
-              <ArrowBackRounded sx={{ fontSize: 16 }} />
-            </IconButton>
+            <Grow in timeout={180}>
+              <IconButton
+                size="small"
+                onClick={handlePrev}
+                aria-label="Pichla sawaal"
+                sx={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--text-muted)',
+                  width: 30, height: 30,
+                  flexShrink: 0,
+                  transition: 'transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
+                  '&:hover': { borderColor: 'var(--border-strong)', color: 'var(--text-primary)', bgcolor: 'var(--bg-hover)', transform: 'translateX(-2px)' },
+                }}
+              >
+                <ArrowBackRounded sx={{ fontSize: 16 }} />
+              </IconButton>
+            </Grow>
           )}
 
-          <TypeIcon sx={{ fontSize: 22, color: typeConfig.fg, flexShrink: 0 }} />
+          <Box className={`quiz-icon-badge ${typeConfig.accent ? 'accent' : ''}`} sx={{ width: 34, height: 34 }}>
+            <TypeIcon sx={{ fontSize: 18, color: typeConfig.fg }} />
+          </Box>
 
           <Box sx={{ minWidth: 0 }}>
             <Typography className="quiz-context-title" title={contextTitle || ''}>
@@ -307,7 +336,8 @@ function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClo
             color: 'var(--text-muted)',
             width: 30, height: 30,
             flexShrink: 0,
-            '&:hover': { borderColor: 'var(--border-strong)', color: 'var(--text-primary)', bgcolor: 'var(--bg-hover)' },
+            transition: 'transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, background 0.15s ease',
+            '&:hover': { borderColor: 'var(--border-strong)', color: 'var(--text-primary)', bgcolor: 'var(--bg-hover)', transform: 'rotate(90deg)' },
           }}
         >
           <CloseRounded sx={{ fontSize: 16 }} />
@@ -321,15 +351,17 @@ function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClo
             <Typography className="quiz-progress-label">
               Sawaal {currentIndex + 1} / {quizData.questionCount}
             </Typography>
+            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>
+              {Math.round(((currentIndex + 1) / quizData.questionCount) * 100)}%
+            </Typography>
           </Box>
-          <Box sx={{ width: '100%', height: 4, bgcolor: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+          <Box sx={{ width: '100%', height: 5, bgcolor: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
             <Box
+              className="quiz-progress-fill"
               sx={{
                 height: '100%',
-                bgcolor: 'var(--primary)',
                 width: `${((currentIndex + 1) / quizData.questionCount) * 100}%`,
                 borderRadius: 2,
-                transition: 'width 0.2s ease',
               }}
             />
           </Box>
@@ -341,169 +373,227 @@ function QuizModal({ isOpen, quizType, subjectId, chapterId, contextTitle, onClo
 
         {/* Loading */}
         {screen === 'loading' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 1.5 }}>
-            <Box className="quiz-loading-spinner" />
-            <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Quiz tayyar ho raha hai...
-            </Typography>
-          </Box>
+          <Fade in appear timeout={300}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 2 }}>
+              <Box className={`quiz-icon-badge ${typeConfig.accent ? 'accent' : ''}`} sx={{ width: 52, height: 52 }}>
+                <TypeIcon sx={{ fontSize: 24, color: typeConfig.fg }} />
+              </Box>
+              <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Quiz tayyar ho raha hai...
+              </Typography>
+              <Box className="quiz-loading-dots">
+                <span /><span /><span />
+              </Box>
+            </Box>
+          </Fade>
         )}
 
         {/* Error */}
         {screen === 'error' && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 2, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-              {error || 'Kuch gadbad ho gayi.'}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <Button variant="outlined" size="small" onClick={onClose}>Band karo</Button>
-              <Button variant="contained" size="small" onClick={handleRetry}>Dobara try karo</Button>
+          <Fade in appear timeout={300}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 2, textAlign: 'center' }}>
+              <Box className="quiz-icon-badge" sx={{ width: 48, height: 48, borderColor: 'var(--error)' }}>
+                <ErrorOutlineRounded sx={{ fontSize: 22, color: 'var(--error)' }} />
+              </Box>
+              <Typography sx={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                {error || 'Kuch gadbad ho gayi.'}
+              </Typography>
+              <Box sx={{ display: 'flex', gap: 1.5 }}>
+                <Button variant="outlined" size="small" onClick={onClose}>Band karo</Button>
+                <Button variant="contained" size="small" startIcon={<ReplayRounded sx={{ fontSize: 16 }} />} onClick={handleRetry}>
+                  Dobara try karo
+                </Button>
+              </Box>
             </Box>
-          </Box>
+          </Fade>
         )}
 
         {/* Question */}
         {screen === 'quiz' && currentQuestion && (
-          <Box>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, mb: 2.5 }}>
-              <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5, flex: 1 }}>
-                {pickText(currentQuestion.text)}
-              </Typography>
-              {Array.isArray(currentQuestion.askedInYears) && currentQuestion.askedInYears.length > 0 && (
-                <span className="quiz-pyq-badge">
-                  PYQ {currentQuestion.askedInYears.join(', ')}
-                </span>
-              )}
-            </Box>
+          <Fade key={currentQuestion.questionId} in appear timeout={220}>
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1.5, mb: 2.5 }}>
+                <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5, flex: 1 }}>
+                  {pickText(currentQuestion.text)}
+                </Typography>
+                {Array.isArray(currentQuestion.askedInYears) && currentQuestion.askedInYears.length > 0 && (
+                  <span className="quiz-pyq-badge" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <HistoryRounded sx={{ fontSize: 12 }} />
+                    PYQ {currentQuestion.askedInYears.join(', ')}
+                  </span>
+                )}
+              </Box>
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {currentQuestion.options.map((opt) => {
-                const isSelected = answers[currentQuestion.questionId]?.selectedOption === opt.label;
-                return (
-                  <button
-                    key={opt.label}
-                    type="button"
-                    className={`quiz-option-btn ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleSelectOption(opt.label)}
-                  >
-                    <span className="quiz-option-label">{opt.label}</span>
-                    <span className="quiz-option-text">{pickText(opt.text)}</span>
-                    {isSelected && <CheckCircleRounded className="quiz-option-check" sx={{ fontSize: 20 }} />}
-                  </button>
-                );
-              })}
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {currentQuestion.options.map((opt, idx) => {
+                  const isSelected = answers[currentQuestion.questionId]?.selectedOption === opt.label;
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      className={`quiz-option-btn ${isSelected ? 'selected' : ''}`}
+                      style={{ animationDelay: `${idx * 50}ms` }}
+                      onClick={() => handleSelectOption(opt.label)}
+                    >
+                      <span className="quiz-option-label">{opt.label}</span>
+                      <span className="quiz-option-text">{pickText(opt.text)}</span>
+                      {isSelected && <CheckCircleRounded className="quiz-option-check" sx={{ fontSize: 20 }} />}
+                    </button>
+                  );
+                })}
+              </Box>
             </Box>
-          </Box>
+          </Fade>
         )}
 
         {/* Confirm submit */}
         {screen === 'confirm' && quizData && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 2, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>
-              {quizData.questionCount} mein se {answeredCount} answered, {skippedCount} skipped
-            </Typography>
-            {quizType === 'chapter_gate' && (
-              <span className="quiz-type-note">Pass karne ke liye 70% chahiye</span>
-            )}
-            {skippedCount > 0 && (
-              <Typography sx={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
-                Kya tum bina jawab diye submit karna chahte ho?
+          <Fade in appear timeout={280}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 2.5, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>
+                Review karo submit karne se pehle
               </Typography>
-            )}
-            {submitError && (
-              <Typography sx={{ fontSize: '0.8rem', color: 'var(--error)' }}>
-                {submitError}
-              </Typography>
-            )}
-            <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
-              <Button variant="outlined" size="small" onClick={handleBackToLastQuestion} disabled={isSubmitting}>
-                Wapas jaao
-              </Button>
-              <Button variant="contained" size="small" onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? 'Submit ho raha hai...' : 'Submit karo'}
-              </Button>
+
+              <Stack direction="row" spacing={1.5} sx={{ width: '100%', maxWidth: 300 }}>
+                <Box className="quiz-stat-card accent" style={{ animationDelay: '30ms' }}>
+                  <CheckCircleRounded sx={{ fontSize: 20, color: 'var(--primary)' }} />
+                  <span className="quiz-stat-number">{answeredCount}</span>
+                  <span className="quiz-stat-label">Answered</span>
+                </Box>
+                <Box className="quiz-stat-card" style={{ animationDelay: '80ms' }}>
+                  <TrendingUpRounded sx={{ fontSize: 20, color: 'var(--text-muted)' }} />
+                  <span className="quiz-stat-number">{skippedCount}</span>
+                  <span className="quiz-stat-label">Skipped</span>
+                </Box>
+              </Stack>
+
+              {quizType === 'chapter_gate' && (
+                <span className="quiz-type-note" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <EmojiEventsRounded sx={{ fontSize: 13 }} />
+                  Pass karne ke liye 70% chahiye
+                </span>
+              )}
+              {skippedCount > 0 && (
+                <Typography sx={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                  Kya tum bina jawab diye submit karna chahte ho?
+                </Typography>
+              )}
+              {submitError && (
+                <Typography sx={{ fontSize: '0.8rem', color: 'var(--error)' }}>
+                  {submitError}
+                </Typography>
+              )}
+              <Box sx={{ display: 'flex', gap: 1.5, mt: 1 }}>
+                <Button variant="outlined" size="small" onClick={handleBackToLastQuestion} disabled={isSubmitting}>
+                  Wapas jaao
+                </Button>
+                <Button variant="contained" size="small" onClick={handleSubmit} disabled={isSubmitting}>
+                  {isSubmitting ? 'Submit ho raha hai...' : 'Submit karo'}
+                </Button>
+              </Box>
             </Box>
-          </Box>
+          </Fade>
         )}
 
         {/* Result */}
         {screen === 'result' && result && (
-          <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 1.5, textAlign: 'center' }}>
-            {result.passed === true && (
-              <Box className="quiz-confetti">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <span key={i} className="quiz-confetti-piece" />
-                ))}
+          <Fade in appear timeout={300}>
+            <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 260, gap: 1.5, textAlign: 'center' }}>
+              {result.passed === true && (
+                <Box className="quiz-confetti">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <span key={i} className="quiz-confetti-piece" />
+                  ))}
+                </Box>
+              )}
+
+              {/* Same 3-tier ring used in attempt history, scaled up as the
+                  focal point here, with the score printed inside it. */}
+              <Box className={`quiz-detail-score-ring lg ${resultTier}`}>
+                <span className="quiz-ring-value">{result.percentage}%</span>
+                <span className="quiz-ring-sub">{result.score}/{result.totalQuestions}</span>
               </Box>
-            )}
 
-            <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>
-              {result.score} / {result.totalQuestions}
-            </Typography>
-            <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              {result.percentage}%
-            </Typography>
+              {result.passed === true && (
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <EmojiEventsRounded sx={{ fontSize: 19, color: 'var(--primary)' }} />
+                  <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--success)' }}>
+                    Chapter complete ho gaya!
+                  </Typography>
+                </Stack>
+              )}
 
-            {result.passed === true && (
-              <Typography sx={{ fontSize: '0.95rem', fontWeight: 700, color: 'success.main' }}>
-                Chapter complete ho gaya!
-              </Typography>
-            )}
+              {result.passed === false && (
+                <>
+                  <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    70% chahiye tha, {result.percentage}% aaya. Dobara try karo.
+                  </Typography>
+                  <Button variant="contained" size="small" startIcon={<ReplayRounded sx={{ fontSize: 16 }} />} onClick={handleRetry}>
+                    Dobara quiz do
+                  </Button>
+                </>
+              )}
 
-            {result.passed === false && (
-              <>
-                <Typography sx={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  70% chahiye tha, {result.percentage}% aaya. Dobara try karo.
-                </Typography>
-                <Button variant="contained" size="small" onClick={handleRetry}>
-                  Dobara quiz do
-                </Button>
-              </>
-            )}
+              {/* Per-question review — one block per question, correct option
+                  highlighted green, wrong-selected option highlighted red. */}
+              {result.results?.length > 0 && (
+                <Box sx={{ width: '100%', textAlign: 'left', mt: 2 }}>
+                  {result.results.map((q, qi) => (
+                    <Box key={q.questionId} className="quiz-review-item" style={{ animationDelay: `${qi * 60}ms` }}>
+                      <Stack direction="row" spacing={0.75} alignItems="flex-start" sx={{ mb: 1 }}>
+                        {q.isCorrect
+                          ? <CheckCircleRounded sx={{ fontSize: 16, color: 'var(--success)', mt: '2px', flexShrink: 0 }} />
+                          : <CancelRounded sx={{ fontSize: 16, color: 'var(--error)', mt: '2px', flexShrink: 0 }} />}
+                        <Typography className="quiz-review-question" sx={{ mb: 0 }}>
+                          {pickText(q.text)}
+                        </Typography>
+                      </Stack>
 
-            {/* Per-question review — one block per question, correct option
-                highlighted green, wrong-selected option highlighted red. */}
-            {result.results?.length > 0 && (
-              <Box sx={{ width: '100%', textAlign: 'left', mt: 2 }}>
-                {result.results.map((q) => (
-                  <Box key={q.questionId} className="quiz-review-item">
-                    <Typography className="quiz-review-question">
-                      {pickText(q.text)}
-                    </Typography>
+                      {q.options.map((opt) => {
+                        const isCorrectOption = opt.label === q.correctOption;
+                        const isWrongSelected = opt.label === q.selectedOption && !q.isCorrect;
+                        const highlightClass = isCorrectOption ? 'correct' : isWrongSelected ? 'incorrect' : '';
 
-                    {q.options.map((opt) => {
-                      const isCorrectOption = opt.label === q.correctOption;
-                      const isWrongSelected = opt.label === q.selectedOption && !q.isCorrect;
-                      const highlightClass = isCorrectOption ? 'correct' : isWrongSelected ? 'incorrect' : '';
+                        return (
+                          <Box key={opt.label} className={`quiz-review-option ${highlightClass}`}>
+                            <span className="quiz-option-label">{opt.label}</span>
+                            <span>{pickText(opt.text)}</span>
+                          </Box>
+                        );
+                      })}
 
-                      return (
-                        <Box key={opt.label} className={`quiz-review-option ${highlightClass}`}>
-                          <span className="quiz-option-label">{opt.label}</span>
-                          <span>{pickText(opt.text)}</span>
-                        </Box>
-                      );
-                    })}
-
-                    {pickText(q.explanation) && (
-                      <Typography className="quiz-review-explanation">
-                        {pickText(q.explanation)}
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-              </Box>
-            )}
-          </Box>
+                      {pickText(q.explanation) && (
+                        <Typography className="quiz-review-explanation">
+                          {pickText(q.explanation)}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Box>
+          </Fade>
         )}
       </Box>
 
       {/* ── Footer nav (question screen only) ── */}
       {screen === 'quiz' && currentQuestion && (
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, px: 3, pb: 3 }}>
-          <Button variant="text" size="small" onClick={handleNext} sx={{ color: 'var(--text-muted)' }}>
+          <Button
+            variant="text"
+            size="small"
+            onClick={handleNext}
+            endIcon={<SkipNextRounded sx={{ fontSize: 16 }} />}
+            sx={{ color: 'var(--text-muted)' }}
+          >
             Skip
           </Button>
-          <Button variant="contained" size="small" onClick={handleNext}>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleNext}
+            endIcon={isLastQuestion ? <CheckCircleRounded sx={{ fontSize: 16 }} /> : <ArrowForwardRounded sx={{ fontSize: 16 }} />}
+          >
             {isLastQuestion ? 'Review & Submit' : 'Agla'}
           </Button>
         </Box>

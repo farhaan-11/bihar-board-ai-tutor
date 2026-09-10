@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useRef, useState,useEffect } from 'react';
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import StopRounded from '@mui/icons-material/StopRounded';
@@ -12,8 +12,15 @@ import Typography from '@mui/material/Typography';
 function AskBar({ disabled, isHistoryLoading, isLocked, isGuestLimited, onGuestLimitClick, onAsk, onCancel, studyMode, showHint = true }) {
   const [question, setQuestion] = useState('');
   const [cancelCooling, setCancelCooling] = useState(false);
+  const questionRef = useRef(null);
+  const inputRef = useRef(null);
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+  if (!disabled && !isLocked && !isGuestLimited && !isHistoryLoading) {
+    inputRef.current?.focus();
+  }
+}, [disabled, isLocked, isGuestLimited, isHistoryLoading]);
+ const handleSubmit = (event) => {
     event.preventDefault();
 
     if (!question.trim()) {
@@ -83,31 +90,35 @@ function AskBar({ disabled, isHistoryLoading, isLocked, isGuestLimited, onGuestL
           Ask Zuno a question
         </label>
         <InputBase
-          fullWidth
-          multiline
-          maxRows={4}
-          id="question"
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault();
-              if (question.trim()) handleSubmit(event);
-            }
-          }}
-          disabled={isLocked || isGuestLimited || isHistoryLoading || disabled}
-          placeholder={
-            isGuestLimited
-              ? 'Login karke padhai jaari rakho!'
-              : isLocked
-                ? 'Nayi chat shuru karo'
-                : studyMode === 'focus'
-                  ? 'Is chapter se kya samajhna hai?'
-                  : 'Jaise bhi bolte ho — waise hi likho'
-          }
-          sx={{ color: 'text.primary', px: 1, alignSelf: 'flex-end' }}
-        />
-        {/* isLocked and isGuestLimited both hide all buttons — no action possible from input. */}
+  inputRef={inputRef}
+  fullWidth
+  multiline
+  maxRows={4}
+  id="question"
+  value={question}
+  onChange={(event) => setQuestion(event.target.value)}
+  onKeyDown={(event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+
+      if (question.trim()) {
+        handleSubmit(event);
+      }
+    }
+  }}
+  disabled={isLocked || isGuestLimited || isHistoryLoading || disabled}
+  placeholder={
+    isGuestLimited
+      ? 'Login karke padhai jaari rakho!'
+      : isLocked
+        ? 'Nayi chat shuru karo'
+        : studyMode === 'focus'
+          ? 'Is chapter se kya samajhna hai?'
+          : 'Jaise bhi bolte ho — waise hi likho'
+  }
+  sx={{ color: 'text.primary', px: 1, alignSelf: 'flex-end' }}
+/>
+      
         {isLocked || isGuestLimited ? null : disabled ? (
           <Tooltip title="Cancel">
             <span>
