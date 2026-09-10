@@ -467,6 +467,37 @@ BUG-5 index step.
 - **DoD:** test passes — **P2 fixed**; chapter/quiz claim still passes; baseline green.
 - **Rollback:** remove the `ChatSession.updateMany` line and revert the controller to `req.body`. P1 phases unaffected.
 
+**✅ RESULT — 2026-09-10, branch `guestID`:**
+
+| Check | Result |
+|---|---|
+| `npm run test:claim-chat` *(new, live DB)* | PASS — 3 groups: (1) two guest sessions + their history flip to the user (`userId` set, `guestId` cleared, `mode: logged_in`, `chat_history.userId` synced, messages intact) and both appear in `getSessionsByUser`; (2) a pre-existing user session is untouched, no collision, user sees exactly own + claimed; (3) no guest chat → `chatSessionsTransferred: 0`, no error |
+| `npm run test:attach-guest` (now Phase 2/4) | PASS — +4 assertions on the shared `resolveGuestIdFromHeader` (token→gid, garbage→null, legacy UUID gated on the flag) |
+| `node scripts/test-p2-t2-schema.js` (session schema regression) | PASS |
+| `test:guest-token`, `test:guest-session-stamp`, `test:ask-limiter-identity` | Still PASS |
+| Baseline (`test:chunks` 17/17, `test:study-map`, `test:curriculum-resolvers`) | Still green |
+| `node --check` (5 files) + import-smoke (`auth.controller`, `chapterProgress.service`, `auth.routes`, `guestMiddleware`) — no import cycle | Clean |
+
+**Files created:** `backend/scripts/test-claim-chat.js`.
+**Files edited:**
+- `guestMiddleware.js` — extracted `resolveGuestIdFromHeader(raw)` (verified token → gid; legacy bare UUID while flag ≠ `false` → gid; else null); `attachGuest` now calls it.
+- `chapterProgress.service.js` — `claimGuestData` also migrates `chat_sessions` (`find` guest sessions → `updateMany` ownership flip → `mode: logged_in`) and syncs `chat_history.userId` by `sessionId`. `sessionId` is a unique UUID so no merge logic is needed (unlike chapter_progress). Return value gains `chatSessionsTransferred`.
+- `auth.controller.js` — `claimGuestProgress` resolves the guest id from the **X-Guest-Id header** (verified token, or legacy UUID during transition), with `req.body.guestId` kept as a **UUID-only transition fallback** for the pre-Phase-5 frontend — both legacy paths gated on `GUEST_LEGACY_ACCEPT !== 'false'`, removed in Phase 6. `GUEST_ID_REGEX` comment updated.
+- `package.json` — `+test:claim-chat`.
+
+**Behaviour — P2 is functionally fixed now:** the current frontend still POSTs
+`{ guestId }` in the body; the controller's transition fallback accepts it and
+`claimGuestData` now transfers chat sessions too. So a guest who chats (session
+created Phase 3+), then logs in, sees those chats in the sidebar — **without
+waiting for Phase 5.** Pre-Phase-3 guest sessions have no `guestId` and remain
+unclaimable (accepted — pre-launch guest chat volume ~0).
+
+**Known transition weakness (closed in Phase 6):** while `GUEST_LEGACY_ACCEPT !==
+'false'`, a logged-in caller could POST a *guessed* bare-UUID `guestId` to claim
+a stranger's guest data. This is not new — the pre-Phase-4 code had the same
+body-UUID trust — guest ids are unguessable random UUIDs, and Phase 6 removes the
+body/legacy paths entirely, leaving only the unforgeable signed token.
+
 ### Phase 5 — Frontend cutover (mint + send token + claim by token)
 
 - **Goal:** browser stops inventing ids; uses the server token end-to-end.

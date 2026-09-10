@@ -19,7 +19,7 @@ import jwt from 'jsonwebtoken';
 
 process.env.GUEST_TOKEN_SECRET = 'test-guest-secret-0123456789abcdef0123456789abcdef';
 
-const { attachGuest } = await import('../src/auth/guestMiddleware.js');
+const { attachGuest, resolveGuestIdFromHeader } = await import('../src/auth/guestMiddleware.js');
 const { generateGuestToken } = await import('../src/auth/guestTokenHelpers.js');
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -103,4 +103,22 @@ const run = (req) => {
   delete process.env.GUEST_LEGACY_ACCEPT;
 }
 
-console.log('\x1b[32m✓ All attach-guest (Phase 2) tests passed\x1b[0m');
+// ── 9. resolveGuestIdFromHeader — the shared resolver used by the login claim ─
+{
+  const token = generateGuestToken('22222222-3333-4444-5555-666666666666');
+  assert.equal(resolveGuestIdFromHeader(token), '22222222-3333-4444-5555-666666666666',
+    'valid token → inner gid');
+  assert.equal(resolveGuestIdFromHeader(''), null, 'empty → null');
+  assert.equal(resolveGuestIdFromHeader('garbage'), null, 'garbage → null');
+
+  delete process.env.GUEST_LEGACY_ACCEPT;
+  assert.equal(resolveGuestIdFromHeader('33333333-4444-5555-6666-777777777777'),
+    '33333333-4444-5555-6666-777777777777', 'legacy UUID accepted while flag unset');
+
+  process.env.GUEST_LEGACY_ACCEPT = 'false';
+  assert.equal(resolveGuestIdFromHeader('33333333-4444-5555-6666-777777777777'), null,
+    'legacy UUID rejected once flag is "false"');
+  delete process.env.GUEST_LEGACY_ACCEPT;
+}
+
+console.log('\x1b[32m✓ All attach-guest (Phase 2/4) tests passed\x1b[0m');

@@ -13,6 +13,8 @@ import { ChapterProgress } from '../models/chapterProgress.model.js';
 import { StudyEvent }      from '../models/studyEvent.model.js';
 import { QuizAttempt }     from '../models/quizAttempt.model.js';
 import { QuizSession }     from '../models/quizSession.model.js';
+import { ChatSession }     from '../models/chatSession.model.js';
+import { ChatHistory }     from '../models/chatHistory.model.js';
 import redis               from '../config/redisClient.js';
 import { loadCurriculumIndex } from '../curriculum/curriculumIndexLoader.js';
 import { getChapterCoreTopics } from '../curriculum/topicResolver.js';
@@ -453,7 +455,37 @@ export const claimGuestData = async (userId, guestId) => {
     { $set: { userId, guestId: null } }
   );
 
-  return { chaptersTransferred, chaptersMerged, quizAttemptsTransferred: quizAttemptResult.modifiedCount };
+  // Chat sessions — flip ownership to the user so the guest's chats appear in
+  // their sidebar. sessionId is a globally-unique UUID, so a guest session can
+  // never collide with an existing user session — a plain ownership flip is
+  // safe, no merge logic needed (unlike chapter_progress above).
+  // chat_history is keyed only by sessionId, so its messages follow
+  // automatically; we still sync its denormalised userId for later analytics.
+  const guestSessions = await ChatSession
+    .find({ guestId, userId: null })
+    .select('sessionId')
+    .lean();
+  const claimedSessionIds = guestSessions.map((s) => s.sessionId);
+
+  let chatSessionsTransferred = 0;
+  if (claimedSessionIds.length) {
+    const chatRes = await ChatSession.updateMany(
+      { guestId, userId: null },
+      { $set: { userId, guestId: null, mode: 'logged_in' } }
+    );
+    chatSessionsTransferred = chatRes.modifiedCount;
+    await ChatHistory.updateMany(
+      { sessionId: { $in: claimedSessionIds } },
+      { $set: { userId } }
+    );
+  }
+
+  return {
+    chaptersTransferred,
+    chaptersMerged,
+    quizAttemptsTransferred: quizAttemptResult.modifiedCount,
+    chatSessionsTransferred,
+  };
 };
 
 /**

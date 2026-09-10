@@ -8,17 +8,42 @@ const LEGACY_GUEST_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * attachGuest — the single trusted reader of the X-Guest-Id header.
+ * Resolves an X-Guest-Id header value into a guest id string, or null.
+ *
+ *   - a valid server-signed guest token  → its inner gid
+ *   - a bare legacy UUID, while GUEST_LEGACY_ACCEPT !== 'false'  → that UUID (transition only)
+ *   - anything else  → null
+ *
+ * Shared by attachGuest (per-request identity) and the login claim, so both
+ * agree on what counts as a guest identity and both stop honouring the legacy
+ * shape at the same moment (Phase 6 flips the flag).
+ */
+export const resolveGuestIdFromHeader = (raw) => {
+  if (!raw) return null;
+
+  const gid = verifyGuestToken(raw);
+  if (gid) return gid;
+
+  if (
+    process.env.GUEST_LEGACY_ACCEPT !== 'false' &&
+    LEGACY_GUEST_UUID.test(String(raw).trim())
+  ) {
+    return String(raw).trim();
+  }
+
+  return null;
+};
+
+/**
+ * attachGuest — the single trusted reader of the X-Guest-Id header for
+ * per-request identity.
  *
  * Resolves guest identity into `req.guest` and never blocks the request
  * (mirrors optionalAuth's shape and contract).
  *
  * Priority:
- *   1. req.user present            → req.guest = null  (a logged-in student is not a guest)
- *   2. header is a valid signed guest token → req.guest = { id: <gid> }
- *   3. header is a bare legacy UUID and GUEST_LEGACY_ACCEPT !== 'false'
- *                                   → req.guest = { id: <uuid> }   (transition only)
- *   4. anything else               → req.guest = null
+ *   1. req.user present  → req.guest = null  (a logged-in student is not a guest)
+ *   2. resolveGuestIdFromHeader(header) → req.guest = { id: <gid> } or null
  *
  * ORDERING: must run AFTER optionalAuth (it reads req.user) and BEFORE any
  * identity-keyed rate limiter (identityKeyGenerator reads req.guest).
@@ -29,18 +54,7 @@ export const attachGuest = (req, _res, next) => {
     return next();
   }
 
-  const raw = req.headers['x-guest-id'];
-  let gid = raw ? verifyGuestToken(raw) : null;
-
-  if (
-    !gid &&
-    raw &&
-    process.env.GUEST_LEGACY_ACCEPT !== 'false' &&
-    LEGACY_GUEST_UUID.test(String(raw).trim())
-  ) {
-    gid = String(raw).trim();
-  }
-
+  const gid = resolveGuestIdFromHeader(req.headers['x-guest-id']);
   req.guest = gid ? { id: gid } : null;
   return next();
 };

@@ -8,6 +8,7 @@ import { sendResponse } from '../utils/sendResponse.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../auth/emailHelpers.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../auth/tokenHelpers.js';
 import { generateGuestToken } from '../auth/guestTokenHelpers.js';
+import { resolveGuestIdFromHeader } from '../auth/guestMiddleware.js';
 import { claimGuestData } from '../services/chapterProgress.service.js';
 
 // Simple email format check — not too strict, just catches obvious mistakes
@@ -630,7 +631,9 @@ export const exchangeOAuthCode = async (req, res, next) => {
   }
 };
 
-// Same UUID format guestRateLimit.js validates on the way in.
+// Legacy client-generated guest id shape (pre-Phase-1). Used to adopt an old id
+// into a signed token (issueGuestToken) and as a transition fallback in the
+// claim below. Retired when GUEST_LEGACY_ACCEPT=false (Phase 6).
 const GUEST_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
@@ -664,25 +667,37 @@ export const issueGuestToken = async (req, res) => {
 
 /**
  * POST /api/v1/auth/claim-guest-progress
- * Called once, right after login/register/OAuth success, with the guestId
- * that was sitting in the browser's localStorage. Transfers that guest's
- * chapter_progress + study_events onto the now-authenticated user so a
- * student who studied as a guest doesn't lose progress on signing up.
- * Never blocks or fails the login flow — an invalid/missing guestId is a
- * harmless no-op, not an error.
+ * Called once, right after login/register/OAuth success. Transfers the guest's
+ * chapter_progress + study_events + quiz history + chat sessions onto the
+ * now-authenticated user so a student who studied as a guest doesn't lose
+ * anything on signing up. Never blocks or fails the login flow — no valid guest
+ * identity is a harmless no-op, not an error.
+ *
+ * The guest identity comes from the X-Guest-Id header (a verified signed token,
+ * or a legacy bare UUID during the transition window) — NOT from a body field
+ * that could name someone else's guest id. `req.body.guestId` is still accepted
+ * as a transition fallback for the pre-Phase-5 frontend, UUID-shape only, and
+ * only while GUEST_LEGACY_ACCEPT !== 'false'. Phase 6 removes the body path.
  */
 export const claimGuestProgress = async (req, res, next) => {
   try {
-    const { guestId } = req.body;
+    let guestId = resolveGuestIdFromHeader(req.headers['x-guest-id']);
 
-    if (!guestId || !GUEST_ID_REGEX.test(String(guestId).trim())) {
+    if (!guestId && process.env.GUEST_LEGACY_ACCEPT !== 'false') {
+      const bodyGuestId = req.body?.guestId;
+      if (typeof bodyGuestId === 'string' && GUEST_ID_REGEX.test(bodyGuestId.trim())) {
+        guestId = bodyGuestId.trim();
+      }
+    }
+
+    if (!guestId) {
       return sendResponse(res, 200, {
-        message: 'No valid guestId — nothing to claim.',
-        data: { chaptersTransferred: 0, chaptersMerged: 0 },
+        message: 'No valid guest identity — nothing to claim.',
+        data: { chaptersTransferred: 0, chaptersMerged: 0, chatSessionsTransferred: 0 },
       });
     }
 
-    const result = await claimGuestData(req.user.id, guestId.trim());
+    const result = await claimGuestData(req.user.id, guestId);
 
     return sendResponse(res, 200, {
       message: 'Guest progress claimed.',
