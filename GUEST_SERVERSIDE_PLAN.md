@@ -572,17 +572,23 @@ index row, `PROJECT_STATE.md` §3 branch entry (deploy needs `GUEST_TOKEN_SECRET
 
 ---
 
-## 7. Whole-branch status — DONE (pending owner merge)
+## 7. Whole-branch status — ✅ MERGED to `main` 2026-09-10 (`--no-ff`, `5d2da99`)
 
-All 6 phases committed on `guestID`. Owner ran the browser acceptance
-(Test 1/2/3) on 2026-09-10 — token mints, guest chat claims onto the account and
-shows in the sidebar (P2 fixed), logout re-mints. DoD (§6) met:
+All 6 phases committed on `guestID`, merged to `main`. `GUEST_TOKEN_SECRET` set
+in the Render + EC2 backend envs by the owner before merge. Owner ran the browser
+acceptance (Test 1/2/3) on 2026-09-10 — token mints, guest chat claims onto the
+account and shows in the sidebar (P2 fixed), logout re-mints. DoD (§6) met:
 
 1. ✅ Guest identity is server-issued only; a forged/rotated/bare-UUID id → no identity.
 2. ✅ After login, guest chat + chapter progress + quiz history transfer; chat appears in the sidebar.
 3. ✅ New tests green; baseline green; `frontend` builds clean.
-4. ✅ `.env.example`, `PROJECT_STATE.md`, ADR-012 updated. **`GUEST_TOKEN_SECRET` must be set in the Render env before deploy** (server won't boot otherwise); run `backend/scripts/create-chat-session-guest-index.js` once against prod (or rely on Mongoose `autoIndex`).
-5. ⏳ Merge to `main` on the owner's say-so.
+4. ✅ `.env.example`, `PROJECT_STATE.md`, ADR-012 updated. `GUEST_TOKEN_SECRET` set in Render + EC2 envs. The `{ guestId: 1 }` partial index auto-creates via Mongoose `autoIndex` on boot; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed.
+5. ✅ Merged to `main` 2026-09-10 (`5d2da99`), pushed to `origin/main`. Render + Vercel + EC2 deploy from `main`.
+
+**Post-deploy smoke (prod):** open the site as a guest → `zuno-guest-id` in
+localStorage becomes a JWT + `POST /api/v1/auth/guest` → 200; ask a question →
+answer streams; log in → `claim-guest-progress` returns `chatSessionsTransferred`
+and the guest chat appears in the sidebar.
 
 **Accepted limitation:** guest sessions created before Phase 3 have no `guestId`
 and are not claimable (pre-launch guest volume ~0). One such orphan was seen in

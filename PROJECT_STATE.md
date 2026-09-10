@@ -44,7 +44,8 @@ Everything below was verified by reading `main` on 2026-08-28. Not assumed.
 | Chapter progress tracking | ✅ Working | `models/chapterProgress.model.js` |
 | Support / feedback | ✅ Working | `routes/support.routes.js` |
 | Redis cache (embedding + retrieval) | ✅ Working | `backend/src/cache/` (4 files) |
-| Rate limiting (7 limiters) | ⚠️ Partial | `middlewares/rateLimiters.js` — see Known Issues |
+| Rate limiting (8 limiters) | ⚠️ Partial | `middlewares/rateLimiters.js` — see Known Issues |
+| Guest identity (server-signed token) | ✅ Working | `auth/guestTokenHelpers.js`, `auth/guestMiddleware.js` — `ADR-012` |
 
 **Routes (8):** ask, auth, chapterProgress, health, quiz, session, studyMap, support
 
@@ -121,7 +122,7 @@ Updated 2026-08-28:
 | Branch | Status |
 |---|---|
 | `main` | ✅ Source of truth. Quiz system + SEO + governance system + BUG-1/BUG-2 + BUG-3 + BUG-4 fixes. |
-| `guestID` | 🔧 **Active, not merged.** Server-side guest identity — replaces the client-generated guest UUID with a server-signed token (`ADR-012`), and fixes the separate bug where a guest's chat was never claimed on login (P2). 6 phases, all committed; owner ran the browser acceptance (guest → chat → login → chat visible in sidebar) 2026-09-10. Plan + evidence: `GUEST_SERVERSIDE_PLAN.md`. **Deploy needs `GUEST_TOKEN_SECRET` in the Render env** (server refuses to boot without it) and one run of `backend/scripts/create-chat-session-guest-index.js`. Merge on owner's say-so. |
+| `guestID` | ✅ **Merged into `main`** 2026-09-10 (`--no-ff`, `5d2da99`). Server-side guest identity — the client-generated guest UUID is replaced by a server-signed token (`ADR-012`); the separate bug where a guest's chat was never claimed on login (P2) is fixed too. 6 phases, owner ran the browser acceptance. `GUEST_TOKEN_SECRET` set in Render + EC2 envs by owner (server refuses to boot without it). The partial `{ guestId: 1 }` index on `chat_sessions` is auto-created by Mongoose `autoIndex`; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed. Plan + evidence: `GUEST_SERVERSIDE_PLAN.md`. Safe to delete the branch. |
 | `bug1-decider-structured-output` | ✅ **Merged into `main`** 2026-08-28 (`--no-ff`). Carried the Stage 1 Section B triage + BUG-1/BUG-2 fix (ADR-011). Safe to delete. |
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
 
