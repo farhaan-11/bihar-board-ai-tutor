@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { setCredentials, setError } from '../store/slices/authSlice.js';
 import { getMe, exchangeAuthCode, claimGuestProgress } from '../services/axios/authService.js';
+import { getGuestIdHeader, clearGuestToken } from '../utils/guestToken.js';
 import { resetGuestTurnCount } from '../utils/guestLimit.js';
 import ZunoMark from '../components/ZunoMark.jsx';
 
@@ -44,10 +45,10 @@ function AuthCallback() {
           // Step 2: Fetch user profile using the received token
           const user = await getMe(accessToken);
 
-          const guestId = localStorage.getItem('zuno-guest-id');
-          if (guestId) {
-            await claimGuestProgress(accessToken, guestId);
-            localStorage.removeItem('zuno-guest-id');
+          const guestToken = getGuestIdHeader();
+          if (guestToken) {
+            await claimGuestProgress(accessToken, guestToken);
+            clearGuestToken();
           }
 
           resetGuestTurnCount();

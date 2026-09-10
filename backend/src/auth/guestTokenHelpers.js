@@ -11,8 +11,8 @@ import { randomUUID } from 'node:crypto';
  * a valid token can only come from the server, and a new identity requires a
  * call to the IP-rate-limited mint endpoint.
  *
- * The inner `gid` stays a plain UUID so every existing `guestId` column, index
- * and the login claim keep working unchanged — only the wrapper is new.
+ * The inner `gid` is a plain UUID so every `guestId` column, index and the login
+ * claim work unchanged — only the wrapper is new.
  *
  * Signed with GUEST_TOKEN_SECRET, deliberately separate from JWT_ACCESS_SECRET /
  * JWT_REFRESH_SECRET so a leak of one signing key never affects the other tier.
@@ -29,13 +29,11 @@ const guestSecret = () => process.env.GUEST_TOKEN_SECRET;
 const GUEST_TOKEN_EXPIRY = '180d';
 
 /**
- * Mints a signed guest token.
- * @param {string} [gid] - existing UUID to preserve (one-time adoption of a
- *   legacy client-generated id during the transition window). Omit for a fresh id.
+ * Mints a signed guest token wrapping a fresh random gid.
  * @returns {string} signed JWT
  */
-export const generateGuestToken = (gid = randomUUID()) => {
-  return jwt.sign({ t: 'guest', gid }, guestSecret(), { expiresIn: GUEST_TOKEN_EXPIRY });
+export const generateGuestToken = () => {
+  return jwt.sign({ t: 'guest', gid: randomUUID() }, guestSecret(), { expiresIn: GUEST_TOKEN_EXPIRY });
 };
 
 /**

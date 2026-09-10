@@ -539,13 +539,54 @@ transition, so nothing breaks between deploy and the first mint.
 4. **The guest chat should appear in the sidebar.** Also check `POST /claim-guest-progress` `200` with `chatSessionsTransferred ≥ 1` in the response.
 5. Log out → `zuno-guest-id` re-mints to a new token; guest ask still works.
 
-### Phase 6 — Remove legacy acceptance + finalize (backend + config)
+### Phase 6 — Remove legacy acceptance + finalize (backend + frontend + docs)
 
 - **Goal:** close the forgeable path for good.
-- **Do:** set `GUEST_LEGACY_ACCEPT=false` (or delete the branch in `attachGuest` and the adoption arm in `issueGuestToken`); confirm no client still sends a bare UUID (logs); update `PROJECT_STATE.md` §4 (P1 resolved), `BACKLOG.md` (close the server-side-guest item), and add a short ADR (`docs/decisions/`) recording the "signed-token-in-header, not cookie" decision and its reasoning (§2.1).
-- **Test:** full baseline + the new suites; a bare-UUID header now resolves to `req.guest = null` (no identity) — prove the forge path is dead.
-- **DoD:** forge path closed; docs + ADR updated; **prod env has `GUEST_TOKEN_SECRET`** (owner business step, like the Render env for BUG-8).
-- **Rollback:** re-enable the flag (the one-flag transition window is exactly the safety valve).
+- **Do:** delete the legacy paths (not just flag them off); ADR + doc updates.
+- **Test:** full baseline + the new suites; a bare-UUID header now resolves to `req.guest = null` — prove the forge path is dead.
+- **DoD:** forge path closed; docs + ADR updated; **prod env has `GUEST_TOKEN_SECRET`**.
+
+**✅ RESULT — 2026-09-10, branch `guestID` (after the owner's Phase-5 browser acceptance passed):**
+
+Legacy paths **deleted**, not disabled (Rule 4 — no lingering guard):
+- `guestMiddleware.js` — `LEGACY_GUEST_UUID` regex and `resolveGuestIdFromHeader` removed; `attachGuest` calls `verifyGuestToken` directly. Only a signed token is an identity now.
+- `auth.controller.js` — `claimGuestProgress` reads `verifyGuestToken(header)` only (no body fallback); `issueGuestToken` always mints a fresh gid (no `legacyGuestId` adoption); `GUEST_ID_REGEX` removed (unused).
+- `guestTokenHelpers.js` — `generateGuestToken()` no longer takes an explicit gid.
+- `.env.example` — `GUEST_LEGACY_ACCEPT` removed.
+- Frontend `guestToken.js` — no longer sends `legacyGuestId`; a stale UUID in storage is just replaced by a fresh mint. `axiosInstance` / `tutorApi` / `AuthCallback` / `LoginPage` / `useLogout` use `getGuestIdHeader()` / `clearGuestToken()` (which treat a non-token value as "no identity").
+- Tests — `test-attach-guest.js` rewritten (bare UUID → null always; no flag toggling); `test-guest-token.js` legacy-adoption case removed.
+
+| Check | Result |
+|---|---|
+| `grep -rn "GUEST_LEGACY_ACCEPT\|resolveGuestIdFromHeader\|legacyGuestId\|GUEST_ID_REGEX" backend/src backend/scripts` | **Zero hits** |
+| `grep -rn "zuno-guest-id" frontend/src` | Only `guestToken.js` (the `GUEST_KEY` const) |
+| `test:guest-token` / `test:attach-guest` / `test:guest-session-stamp` / `test:claim-chat` / `test:ask-limiter-identity` | All PASS |
+| Baseline (`test:chunks` 17/17, `test:study-map`, `test:curriculum-resolvers`) | Green |
+| `cd frontend && npm run build` | Clean |
+| `node --check` (5 files) + backend import-smoke | Clean |
+
+**Docs:** `docs/decisions/012-server-side-guest-identity.md` (new — the
+signed-token-in-header decision + rejected alternatives), `docs/decisions/README.md`
+index row, `PROJECT_STATE.md` §3 branch entry (deploy needs `GUEST_TOKEN_SECRET`
++ the index migration).
+
+---
+
+## 7. Whole-branch status — DONE (pending owner merge)
+
+All 6 phases committed on `guestID`. Owner ran the browser acceptance
+(Test 1/2/3) on 2026-09-10 — token mints, guest chat claims onto the account and
+shows in the sidebar (P2 fixed), logout re-mints. DoD (§6) met:
+
+1. ✅ Guest identity is server-issued only; a forged/rotated/bare-UUID id → no identity.
+2. ✅ After login, guest chat + chapter progress + quiz history transfer; chat appears in the sidebar.
+3. ✅ New tests green; baseline green; `frontend` builds clean.
+4. ✅ `.env.example`, `PROJECT_STATE.md`, ADR-012 updated. **`GUEST_TOKEN_SECRET` must be set in the Render env before deploy** (server won't boot otherwise); run `backend/scripts/create-chat-session-guest-index.js` once against prod (or rely on Mongoose `autoIndex`).
+5. ⏳ Merge to `main` on the owner's say-so.
+
+**Accepted limitation:** guest sessions created before Phase 3 have no `guestId`
+and are not claimable (pre-launch guest volume ~0). One such orphan was seen in
+the owner's own test data ("Photosynthesis Kya Hai") — expected, harmless.
 
 ---
 

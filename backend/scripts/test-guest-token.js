@@ -48,21 +48,14 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   assert.notEqual(a, b, 'each mint allocates a new gid');
 }
 
-// ── 3. Explicit gid (legacy adoption) survives verbatim ──────────────────────
-{
-  const legacy = '11111111-2222-3333-4444-555555555555';
-  const gid = verifyGuestToken(generateGuestToken(legacy));
-  assert.equal(gid, legacy, 'an adopted legacy gid must survive the round-trip unchanged');
-}
-
-// ── 4. Garbage / empty / non-string input → null, never a throw ──────────────
+// ── 3. Garbage / empty / non-string input → null, never a throw ──────────────
 {
   for (const bad of ['', null, undefined, 'not-a-jwt', 'a.b.c', 42, {}, []]) {
     assert.equal(verifyGuestToken(bad), null, `rejects ${JSON.stringify(bad)}`);
   }
 }
 
-// ── 5. Tampered payload → signature mismatch → null ──────────────────────────
+// ── 4. Tampered payload → signature mismatch → null ──────────────────────────
 {
   const token = generateGuestToken();
   const parts = token.split('.');
@@ -70,13 +63,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   assert.equal(verifyGuestToken(parts.join('.')), null, 'a tampered token is rejected');
 }
 
-// ── 6. Signed with a different secret → null ─────────────────────────────────
+// ── 5. Signed with a different secret → null ─────────────────────────────────
 {
   const foreign = jwt.sign({ t: 'guest', gid: 'abc' }, 'some-other-secret-not-ours');
   assert.equal(verifyGuestToken(foreign), null, 'a foreign-secret token is rejected');
 }
 
-// ── 7. Right secret, wrong / missing type claim → null ───────────────────────
+// ── 6. Right secret, wrong / missing type claim → null ───────────────────────
 {
   const asUser = jwt.sign({ t: 'user', userId: 'u1' }, process.env.GUEST_TOKEN_SECRET);
   assert.equal(verifyGuestToken(asUser), null, 'a non-guest token type is rejected');
@@ -88,13 +81,13 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   assert.equal(verifyGuestToken(noGid), null, 'a missing gid is rejected');
 }
 
-// ── 8. Expired token → null ─────────────────────────────────────────────────
+// ── 7. Expired token → null ─────────────────────────────────────────────────
 {
   const expired = jwt.sign({ t: 'guest', gid: 'g1' }, process.env.GUEST_TOKEN_SECRET, { expiresIn: -10 });
   assert.equal(verifyGuestToken(expired), null, 'an expired token is rejected');
 }
 
-// ── 9. Wiring: route registered + limiter applied + env required ─────────────
+// ── 8. Wiring: route registered + limiter applied + env required ─────────────
 {
   const routes = readFileSync(
     fileURLToPath(new URL('../src/routes/auth.routes.js', import.meta.url)),
@@ -123,4 +116,4 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
   );
 }
 
-console.log('\x1b[32m✓ All guest-token (Phase 1) tests passed\x1b[0m');
+console.log('\x1b[32m✓ All guest-token tests passed\x1b[0m');

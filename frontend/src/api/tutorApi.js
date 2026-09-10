@@ -3,11 +3,7 @@ import { store } from '../store/store.js';
 import { parse } from 'partial-json';
 import { setCredentials, clearCredentials } from '../store/slices/authSlice.js';
 import { refreshAccessToken } from '../services/axios/authService.js';
-import { ensureGuestToken } from '../utils/guestToken.js';
-
-// The guest identity is a server-minted token stored under `zuno-guest-id`.
-// The browser no longer invents its own id.
-const getGuestId = () => localStorage.getItem('zuno-guest-id') || null;
+import { ensureGuestToken, getGuestIdHeader } from '../utils/guestToken.js';
 
 export const fetchStudyMap = async () => {
   try {
@@ -236,12 +232,12 @@ export const askTutor = async ({ question, studyMode, chapterId, sessionId }, si
   // A brand-new guest may reach /ask before main.jsx's ensureGuestToken() has
   // resolved — mint it now so the request carries an identity (the backend
   // rejects a guest /ask with no X-Guest-Id).
-  if (!token && !getGuestId()) {
+  if (!token && !getGuestIdHeader()) {
     await ensureGuestToken();
   }
 
   const headers = { 'Content-Type': 'application/json' };
-  const guestId = getGuestId();
+  const guestId = getGuestIdHeader();
   if (guestId) headers['X-Guest-Id'] = guestId;
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;

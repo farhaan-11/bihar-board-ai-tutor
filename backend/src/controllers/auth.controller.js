@@ -7,8 +7,7 @@ import ApiError from '../utils/ApiError.js';
 import { sendResponse } from '../utils/sendResponse.js';
 import { sendVerificationEmail, sendPasswordResetEmail } from '../auth/emailHelpers.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../auth/tokenHelpers.js';
-import { generateGuestToken } from '../auth/guestTokenHelpers.js';
-import { resolveGuestIdFromHeader } from '../auth/guestMiddleware.js';
+import { generateGuestToken, verifyGuestToken } from '../auth/guestTokenHelpers.js';
 import { claimGuestData } from '../services/chapterProgress.service.js';
 
 // Simple email format check — not too strict, just catches obvious mistakes
@@ -631,37 +630,20 @@ export const exchangeOAuthCode = async (req, res, next) => {
   }
 };
 
-// Legacy client-generated guest id shape (pre-Phase-1). Used to adopt an old id
-// into a signed token (issueGuestToken) and as a transition fallback in the
-// claim below. Retired when GUEST_LEGACY_ACCEPT=false (Phase 6).
-const GUEST_ID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * POST /api/v1/auth/guest
- * Issues a server-signed guest identity token. The browser stores it and sends
- * it as the X-Guest-Id header instead of a self-generated UUID, so guest ids can
- * no longer be fabricated or rotated to bypass the guest turn limit.
- *
- * Optional body { legacyGuestId }: during the transition window a browser that
- * still holds an old client-generated UUID passes it here once, so its existing
- * guest progress (chapter_progress, quiz history) is preserved under the new
- * signed token. Ignored unless it is a well-formed UUID.
+ * Issues a server-signed guest identity token wrapping a fresh random gid. The
+ * browser stores it and sends it as the X-Guest-Id header instead of a
+ * self-generated UUID, so guest ids can no longer be fabricated or rotated to
+ * bypass the guest turn limit.
  *
  * IP-rate-limited (guestMintLimiter). Stateless — no DB write. Never fails: the
  * worst case for the caller is retrying.
  */
-export const issueGuestToken = async (req, res) => {
-  const legacy = req.body?.legacyGuestId;
-  const adoptGid =
-    typeof legacy === 'string' && GUEST_ID_REGEX.test(legacy.trim())
-      ? legacy.trim()
-      : undefined;
-
-  const guestToken = generateGuestToken(adoptGid);
-
+export const issueGuestToken = async (_req, res) => {
   return sendResponse(res, 200, {
     message: 'Guest token issued.',
-    data: { guestToken },
+    data: { guestToken: generateGuestToken() },
   });
 };
 
@@ -673,22 +655,12 @@ export const issueGuestToken = async (req, res) => {
  * anything on signing up. Never blocks or fails the login flow — no valid guest
  * identity is a harmless no-op, not an error.
  *
- * The guest identity comes from the X-Guest-Id header (a verified signed token,
- * or a legacy bare UUID during the transition window) — NOT from a body field
- * that could name someone else's guest id. `req.body.guestId` is still accepted
- * as a transition fallback for the pre-Phase-5 frontend, UUID-shape only, and
- * only while GUEST_LEGACY_ACCEPT !== 'false'. Phase 6 removes the body path.
+ * The guest identity comes only from a verified signed token in the X-Guest-Id
+ * header — never a body field, which could name someone else's guest id.
  */
 export const claimGuestProgress = async (req, res, next) => {
   try {
-    let guestId = resolveGuestIdFromHeader(req.headers['x-guest-id']);
-
-    if (!guestId && process.env.GUEST_LEGACY_ACCEPT !== 'false') {
-      const bodyGuestId = req.body?.guestId;
-      if (typeof bodyGuestId === 'string' && GUEST_ID_REGEX.test(bodyGuestId.trim())) {
-        guestId = bodyGuestId.trim();
-      }
-    }
+    const guestId = verifyGuestToken(req.headers['x-guest-id']);
 
     if (!guestId) {
       return sendResponse(res, 200, {

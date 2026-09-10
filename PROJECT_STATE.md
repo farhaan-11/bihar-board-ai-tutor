@@ -121,6 +121,7 @@ Updated 2026-08-28:
 | Branch | Status |
 |---|---|
 | `main` | ✅ Source of truth. Quiz system + SEO + governance system + BUG-1/BUG-2 + BUG-3 + BUG-4 fixes. |
+| `guestID` | 🔧 **Active, not merged.** Server-side guest identity — replaces the client-generated guest UUID with a server-signed token (`ADR-012`), and fixes the separate bug where a guest's chat was never claimed on login (P2). 6 phases, all committed; owner ran the browser acceptance (guest → chat → login → chat visible in sidebar) 2026-09-10. Plan + evidence: `GUEST_SERVERSIDE_PLAN.md`. **Deploy needs `GUEST_TOKEN_SECRET` in the Render env** (server refuses to boot without it) and one run of `backend/scripts/create-chat-session-guest-index.js`. Merge on owner's say-so. |
 | `bug1-decider-structured-output` | ✅ **Merged into `main`** 2026-08-28 (`--no-ff`). Carried the Stage 1 Section B triage + BUG-1/BUG-2 fix (ADR-011). Safe to delete. |
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
 
