@@ -2,7 +2,7 @@
  * chapterProgress.controller.js
  *
  * HTTP handlers for the /api/v1/chapter-progress routes.
- * Reads userId from req.user (auth middleware) or guestId from X-Guest-Id header.
+ * Reads userId from req.user (auth middleware) or guestId from req.guest (attachGuest).
  */
 
 import {
@@ -18,8 +18,8 @@ import ApiError                 from '../utils/ApiError.js';
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const extractIdentity = (req) => ({
-  userId:  req.user?.id   || null,
-  guestId: req.user ? null : (req.headers['x-guest-id'] || null),
+  userId:  req.user?.id  || null,
+  guestId: req.guest?.id || null, // req.guest set by attachGuest, null when req.user present
 });
 
 /**

@@ -368,6 +368,35 @@ intact. Additive only.
 - **DoD:** new tests + `test:ask-limiter-identity` pass; grep shows no `x-guest-id` read outside `guestMiddleware.js`; baseline green.
 - **Rollback:** revert the 6 one-line reads to `req.headers['x-guest-id']`; remove `attachGuest`. Old behavior restored.
 
+**✅ RESULT — 2026-09-10, branch `guestID`:**
+
+| Check | Result |
+|---|---|
+| `npm run test:attach-guest` *(new)* | PASS — 8 groups: valid token→`{id}`, no header→null, logged-in→null, garbage/foreign→null, legacy UUID adopted while flag≠`false`, legacy UUID rejected at flag=`false`, two mints=two ids, rotated fake ids→null. Also asserts `next()` always called with no error. |
+| `npm run test:ask-limiter-identity` (BUG-8, updated) | PASS — guest cases now feed `req.guest` (not the raw header); case 5 documents that a rotated unsigned id lands on the IP key. |
+| `npm run test:guest-token` (Phase 1) | Still PASS |
+| grep `x-guest-id` read outside `guestMiddleware.js` | **Zero.** Only remaining hits are comments/docstrings + `guestMiddleware.js:32` (the one trusted read). |
+| Baseline (`test:chunks` 17/17, `test:study-map`, `test:curriculum-resolvers`) | Still green |
+| `node --check` on all 12 edited files + import-smoke of the 4 touched route modules + `guestMiddleware` | All clean |
+
+**Files created:** `backend/src/auth/guestMiddleware.js` (`attachGuest`),
+`backend/scripts/test-attach-guest.js`.
+**Files edited:** `rateLimiters.js` (`identityKeyGenerator` reads `req.guest?.id`),
+`guestRateLimit.js` (reads `req.guest?.id`, dropped the now-dead UUID regex),
+`ask.controller.js` / `quiz.controller.js` / `chapterProgress.controller.js` /
+`support.controller.js` (all read `req.guest?.id`),
+`quizConstants.js` (removed now-unused `GUEST_ID_MAX_LENGTH` + its import),
+`ask.routes.js` / `quiz.routes.js` / `chapterProgress.routes.js` / `support.routes.js`
+(mount `attachGuest` right after `optionalAuth`, before any identity-keyed limiter),
+`.env.example` (+`GUEST_LEGACY_ACCEPT=true`), `package.json` (+`test:attach-guest`).
+
+**Behaviour now:** a signed guest token OR (transition) a legacy bare UUID resolves
+to `req.guest.id`; a forged/rotated unsigned id resolves to **no identity** →
+the request is IP-keyed, so the 5-turn cap can no longer be farmed. **P1 is
+functionally closed** on the backend; the forgeable legacy path stays open only
+until Phase 6 flips `GUEST_LEGACY_ACCEPT=false`. Frontend still sends the old
+client UUID — accepted via the legacy path — until Phase 5.
+
 ### Phase 3 — Stamp `guestId` onto chat sessions (backend, additive)
 
 - **Goal:** every guest chat session carries its `gid`, so it can be claimed later.

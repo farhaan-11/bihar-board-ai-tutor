@@ -38,7 +38,8 @@
     "test:no-cache-fallback": "node scripts/test-no-cache-fallback.js",
     "test:glossary-devanagari": "node scripts/test-glossary-devanagari.js",
     "test:ask-limiter-identity": "node scripts/test-ask-limiter-identity.js",
-    "test:guest-token": "node scripts/test-guest-token.js"
+    "test:guest-token": "node scripts/test-guest-token.js",
+    "test:attach-guest": "node scripts/test-attach-guest.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

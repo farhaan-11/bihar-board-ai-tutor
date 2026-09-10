@@ -43,9 +43,11 @@ const SCHOOL_IP = '203.0.113.7'; // one public IP, shared by a whole classroom
 }
 
 // ── 2. Two guests behind ONE IP get TWO buckets ─────────────────────────────
+// req.guest is set by attachGuest (the trusted X-Guest-Id reader). Two distinct
+// resolved guest ids → two buckets, regardless of shared IP.
 {
-  const a = identityKeyGenerator({ user: null, headers: { 'x-guest-id': 'guest-A' }, ip: SCHOOL_IP });
-  const b = identityKeyGenerator({ user: null, headers: { 'x-guest-id': 'guest-B' }, ip: SCHOOL_IP });
+  const a = identityKeyGenerator({ user: null, guest: { id: 'guest-A' }, headers: {}, ip: SCHOOL_IP });
+  const b = identityKeyGenerator({ user: null, guest: { id: 'guest-B' }, headers: {}, ip: SCHOOL_IP });
   assert.notEqual(a, b, 'BUG-8: two guests on one IP must not share a bucket');
   assert.equal(a, 'guest_guest-A');
   assert.equal(b, 'guest_guest-B');
@@ -58,16 +60,19 @@ const SCHOOL_IP = '203.0.113.7'; // one public IP, shared by a whole classroom
   assert.equal(home, school, 'a single identity must be one bucket regardless of network');
 }
 
-// ── 4. Logged-in identity wins over a stray guest header ────────────────────
+// ── 4. Logged-in identity wins over a stray guest object ────────────────────
 {
-  const k = identityKeyGenerator({ user: { id: 'stu_A' }, headers: { 'x-guest-id': 'guest-X' }, ip: SCHOOL_IP });
-  assert.equal(k, 'user_stu_A', 'req.user must take priority over x-guest-id');
+  const k = identityKeyGenerator({ user: { id: 'stu_A' }, guest: { id: 'guest-X' }, headers: {}, ip: SCHOOL_IP });
+  assert.equal(k, 'user_stu_A', 'req.user must take priority over req.guest');
 }
 
 // ── 5. No identity at all → fall back to the IPv6-safe IP key ───────────────
+// This is the path a ROTATED UNSIGNED guest id lands on: attachGuest could not
+// verify it, so req.guest stays null and the request is keyed by IP — an
+// attacker minting fresh fake ids can no longer farm fresh buckets.
 {
-  const k = identityKeyGenerator({ user: null, headers: {}, ip: SCHOOL_IP });
-  assert.equal(k, ipKeyGenerator(SCHOOL_IP), 'no user + no guest id → normalised IP key');
+  const k = identityKeyGenerator({ user: null, guest: null, headers: {}, ip: SCHOOL_IP });
+  assert.equal(k, ipKeyGenerator(SCHOOL_IP), 'no user + no resolved guest → normalised IP key');
 }
 
 // ── 6. Wiring: askApiLimiter actually uses identityKeyGenerator ─────────────

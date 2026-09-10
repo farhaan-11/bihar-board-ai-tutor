@@ -12,8 +12,8 @@ import ApiError from '../utils/ApiError.js';
 import { sendSupportNotificationEmail } from '../auth/emailHelpers.js';
 
 const extractIdentity = (req) => ({
-  userId:  req.user?.id || null,
-  guestId: req.user ? null : (req.headers['x-guest-id'] || null),
+  userId:  req.user?.id  || null,
+  guestId: req.guest?.id || null, // req.guest set by attachGuest, null when req.user present
 });
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
