@@ -4,6 +4,7 @@
  */
 
 import { retrieveRelevantChunks, retrieveChunksByTopicId, hasHeadingOrChapterTermMatch } from '../rag/retriever.js';
+import { retrieveFromPython } from '../rag/pythonRetrieverClient.js';
 import { formatSources } from '../rag/sourceFormatter.js';
 import { formatRetrievedContext } from './promptHelpers.js';
 import { getNextTopic } from '../curriculum/nextTopicResolver.js';
@@ -23,6 +24,14 @@ const getRetrieverOptions = (focusChapter) => {
     metadataFilter: focusChapter.metadataFilter, // Scopes to e.g. { subject: 'Science', section: 'Biology', chapter_no: 1 }
     requireTermMatchForLatinQuery: true,          // Restricts loose embedding drifts
   };
+};
+
+// One switch for all search calls below. .env values are text, so we compare with 'true'.
+const searchChunks = (query, options) => {
+  if (String(process.env.USE_PYTHON_RETRIEVER).toLowerCase() === 'true') {
+    return retrieveFromPython(query, options);
+  }
+  return retrieveRelevantChunks(query, options);
 };
 
 /**
@@ -126,7 +135,7 @@ export const retrieveContent = async ({ needsRetrieval, searchQuery, intent, exa
     const querySource = chatState?.lastRetrievalQuery ? 'chatState.lastRetrievalQuery' : 'chatState.lastTopic';
     if (isDev) console.log(`[Step 5 EXPLAIN_MORE] Re-retrieving via ${querySource}: "${topicQuery}"`);
 
-    const explainRetrieval = await retrieveRelevantChunks(topicQuery, getRetrieverOptions(focusChapter));
+    const explainRetrieval = await searchChunks(topicQuery, getRetrieverOptions(focusChapter));
     const explainChunks = explainRetrieval.results || [];
 
     if (!explainChunks.length) {
@@ -190,7 +199,7 @@ export const retrieveContent = async ({ needsRetrieval, searchQuery, intent, exa
 
   if (isDev) console.log(`[Step 5 DB Scan] Querying index vectors using computed target: "${searchQuery}"`);
 
-  const retrieval = await retrieveRelevantChunks(
+  const retrieval = await searchChunks(
     searchQuery,
     getRetrieverOptions(focusChapter)
   );
@@ -210,7 +219,7 @@ export const retrieveContent = async ({ needsRetrieval, searchQuery, intent, exa
   if (intent === 'CONCEPT_QUESTION' && focusChapter && (chunks.length === 0 || hasOnlyWeakMatches)) {
     if (isDev) console.log(`[Step 5 OOF] Focus retrieval ${chunks.length === 0 ? 'returned 0' : 'found only weak content-only matches'} — running global fallback for: "${searchQuery}"`);
 
-    const globalRetrieval = await retrieveRelevantChunks(searchQuery, { topK: 3 });
+    const globalRetrieval = await searchChunks(searchQuery, { topK: 3 });
     const globalChunks = globalRetrieval.results || [];
     const globalHasStrongMatch = globalChunks.some((chunk) => hasHeadingOrChapterTermMatch(chunk));
 
