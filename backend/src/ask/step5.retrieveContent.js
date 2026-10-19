@@ -26,12 +26,52 @@ const getRetrieverOptions = (focusChapter) => {
   };
 };
 
-// One switch for all search calls below. .env values are text, so we compare with 'true'.
-const searchChunks = (query, options) => {
-  if (String(process.env.USE_PYTHON_RETRIEVER).toLowerCase() === 'true') {
+// Shadow mode: Python ko bhi chalata hu, par uska result sirf log mein jaata hai.
+// Python fail ho to chup rehta hu, student ko kuch pata nahi chalna chahiye.
+// fetchPython bahar se de sakte hain (test ke liye), warna asli Python client chalta hai.
+export const compareWithPython = async (query, options, nodeResult, fetchPython = retrieveFromPython) => {
+  try {
+    const startedAt = Date.now();
+    const pythonResult = await fetchPython(query, options);
+    const pythonMs = Date.now() - startedAt;
+
+    const nodeIds = [];
+    for (const chunk of nodeResult.results) {
+      nodeIds.push(chunk.id);
+    }
+
+    const pythonIds = [];
+    for (const chunk of pythonResult.results) {
+      pythonIds.push(chunk.id);
+    }
+
+    if (nodeIds.join(',') === pythonIds.join(',')) {
+      console.log(`[Shadow] same ids (python ${pythonMs}ms) for "${query.slice(0, 60)}"`);
+    } else {
+      console.warn(`[Shadow] DIFF (python ${pythonMs}ms) for "${query.slice(0, 60)}"`, { node: nodeIds, python: pythonIds });
+    }
+  } catch (error) {
+    console.log(`[Shadow] python failed, student ko kuch nahi dikha: ${error.message}`);
+  }
+};
+
+// One switch for all search calls below. .env values are text, so we compare with text.
+// false = sirf Node, true = sirf Python, shadow = Node jawab deta hai, Python sirf log mein
+const searchChunks = async (query, options) => {
+  const mode = String(process.env.USE_PYTHON_RETRIEVER).toLowerCase();
+
+  if (mode === 'true') {
     return retrieveFromPython(query, options);
   }
-  return retrieveRelevantChunks(query, options);
+
+  const nodeResult = await retrieveRelevantChunks(query, options);
+
+  if (mode === 'shadow') {
+    // await nahi lagaya, taaki student ko Python ka wait na karna pade
+    compareWithPython(query, options, nodeResult);
+  }
+
+  return nodeResult;
 };
 
 /**
