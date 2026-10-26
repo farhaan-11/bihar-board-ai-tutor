@@ -115,8 +115,10 @@ every boot.
 **Where:** `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`. The local
 `backend/.env` triggers it (seen in the 2026-10-26 Docker boot log); the exact
 lengths are deliberately not recorded here.
-**Unknown:** the production values on Render / EC2 — **not checked**. Never paste
-them into chat or notes.
+**Production (Render):** checked by the owner on 2026-10-26 and reported fine
+(**owner-reported**; the values were never shared or recorded). **EC2:** not
+checked — the EC2 services are deployed but not active. Never paste secrets into
+chat or notes.
 
 **Why it matters:** an HS256 token signed with a short secret can be brute-forced
 offline, and whoever has the secret can forge a login for any user. Zuno stores
@@ -124,7 +126,9 @@ minors' names, emails and chats.
 **Fix direction:** generate 32+ random characters per secret. Rotating logs every
 student out — that is a business call for the owner.
 **Promotion condition:** if the *production* secrets are < 32 characters, this
-becomes a Stage 1 item (Section F, student safety). Check production first.
+becomes a Stage 1 item (Section F, student safety). Render (the only live backend)
+is checked and fine, so this stays here. Re-check the EC2 values before EC2 is
+ever activated.
 
 ---
 
