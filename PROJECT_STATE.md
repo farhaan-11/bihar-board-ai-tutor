@@ -79,7 +79,7 @@ Sanskrit = **0**. This is a deliberate v1 scope decision — see `ADR-007`.
 | Piece | Current | Note |
 |---|---|---|
 | Backend | Render **FREE** | ⚠️ Sleeps after 15 min. Cold start ~50s. Must upgrade before launch. |
-| Backend (EC2, GitHub-Actions deploy) | ⚠️ Instance **stopped** (owner-reported, 2026-10-26) | `deploy-zuno.sh` lives on the box, not in this repo. Which backend serves real students is an open question — see §8.3. |
+| Backend (EC2, GitHub-Actions deploy) | ⚠️ Instance **stopped**, deployed but **not active** (owner-reported, 2026-10-26) | `deploy-zuno.sh` lives on the box, not in this repo. Students are served by Render, not EC2 — see §8.3. |
 | Python retrieval service | Render | Separate repo `zuno-retrieval-service`. Shadow mode only — see §8.1. |
 | Frontend | Vercel | ✅ Deploys again after the prerender revert (2026-08-29). |
 | Database | MongoDB Atlas | OK for now |
@@ -348,16 +348,16 @@ assets + the static SEO files, no `support.html`.
   diagnosed). Do not start the instance just to read the script: a stop/start
   normally changes the public IP unless an Elastic IP is attached, which would
   stale both the DNS A record and the `EC2_HOST` secret.
-- **Open question (needs the owner):** which backend serves real students —
-  Render, or EC2 via `api.learnzuno.in`? Check what the Vercel build's
-  `VITE_API_BASE_URL` points to. Until answered, Render is the only backend
-  confirmed reachable (2026-10-25).
+- **Answered (owner-reported, 2026-10-26):** real students are served by Render.
+  Vercel's `VITE_API_BASE_URL` points to the Render backend. The AWS/EC2 services
+  are deployed but not activated — everything live runs on Render + Vercel, so the
+  stopped EC2 and the `api.learnzuno.in` DNS do not affect students.
 
 ### 8.4 Found while doing the above — parked, not fixed
 
 All logged in `BACKLOG.md`, bucketed per `AUDIT_RULES.md` Rule 2: **B1** deploy
 not gated by CI · **R7** JWT secrets below the 32-character minimum (local `.env`;
-**production values unchecked**) · **O16** local env points at the prod database · **O17**
+Render production checked, owner-reported fine; EC2 values unchecked) · **O16** local env points at the prod database · **O17**
 `zuno-retrieval` container has no healthcheck · **A1** shadow → `true` cutover
 criteria.
 
