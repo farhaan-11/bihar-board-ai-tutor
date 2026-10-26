@@ -2,8 +2,11 @@
 
 > **This is the single source of truth for "what exists right now".**
 > Any AI agent or developer starting work on this repo MUST read this file first.
-> Last verified: 2026-08-28 (verified against `main`, not from memory).
-> Latest merge: BUG-8 — `askApiLimiter` now keyed by identity (`identityKeyGenerator`),
+> Last verified: §1–§7 as of 2026-08-28 (verified against `main`, not from memory).
+> **§8 added 2026-10-26** — covers everything since 2026-09-10 (Python retriever,
+> Docker, EC2). Latest merge to `main`: `2a04c05` (2026-10-25), the Python retriever
+> client behind a flag + shadow mode. Re-verify §1–§7 before relying on them.
+> Previous merge (Section C): BUG-8 — `askApiLimiter` now keyed by identity (`identityKeyGenerator`),
 > not raw IP. Section C (all 8 verified bugs) complete. Merged to `main`
 > 2026-09-09 (`--no-ff`, `1086b36`). `globalApiLimiter` (same raw-IP cause)
 > parked in `BACKLOG.md` R6 with a blocking condition. Prior merges: frontend
@@ -76,6 +79,8 @@ Sanskrit = **0**. This is a deliberate v1 scope decision — see `ADR-007`.
 | Piece | Current | Note |
 |---|---|---|
 | Backend | Render **FREE** | ⚠️ Sleeps after 15 min. Cold start ~50s. Must upgrade before launch. |
+| Backend (EC2, GitHub-Actions deploy) | ⚠️ Instance **stopped** (owner-reported, 2026-10-26) | `deploy-zuno.sh` lives on the box, not in this repo. Which backend serves real students is an open question — see §8.3. |
+| Python retrieval service | Render | Separate repo `zuno-retrieval-service`. Shadow mode only — see §8.1. |
 | Frontend | Vercel | ✅ Deploys again after the prerender revert (2026-08-29). |
 | Database | MongoDB Atlas | OK for now |
 | Cache / rate limit | Upstash Redis **free** | ⚠️ ~10k commands/day ceiling |
@@ -117,7 +122,7 @@ All four are tracked in `STAGE1_DONE.md` sections F and G.
 **`main` is the source of truth.** All audits and fixes happen on branches cut
 from `main`.
 
-Updated 2026-08-28:
+Updated 2026-08-28 (rows for 2026-09-10 and 2026-10-26 added later):
 
 | Branch | Status |
 |---|---|
@@ -125,6 +130,8 @@ Updated 2026-08-28:
 | `guestID` | ✅ **Merged into `main`** 2026-09-10 (`--no-ff`, `5d2da99`). Server-side guest identity — the client-generated guest UUID is replaced by a server-signed token (`ADR-012`); the separate bug where a guest's chat was never claimed on login (P2) is fixed too. 6 phases, owner ran the browser acceptance. `GUEST_TOKEN_SECRET` set in Render + EC2 envs by owner (server refuses to boot without it). The partial `{ guestId: 1 }` index on `chat_sessions` is auto-created by Mongoose `autoIndex`; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed. Plan + evidence: `GUEST_SERVERSIDE_PLAN.md`. Safe to delete the branch. |
 | `bug1-decider-structured-output` | ✅ **Merged into `main`** 2026-08-28 (`--no-ff`). Carried the Stage 1 Section B triage + BUG-1/BUG-2 fix (ADR-011). Safe to delete. |
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
+| `docker-local-compose` | 🟡 **Pushed to `origin` 2026-10-26 (`d51a74d`), not merged — on purpose.** Local 3-service compose stack + hardened `backend/Dockerfile`. A push to `main` auto-deploys via `deploy-ec2.yml`, and the EC2 deploy script has not been read, so merge waits for that check. Details: §8.2. |
+| `python-retriever` | ✅ **Merged into `main`** 2026-10-25 (fast-forward, `2a04c05`) and deleted locally + on GitHub. See §8.1. |
 
 **Merged and safe to delete:** `quiz`, `quiz-phase1..4`, `global`, `profile`,
 `logo`, `feat/support-page`, `stalefilefixes`, `DECIDER_GREETING_FIX`,
@@ -254,6 +261,10 @@ block — note `test:chat-db-models` and `test:golden` are broken/no-op on `main
 onboarding:** fix `globalApiLimiter` (BACKLOG R6 / BUG-8b) — same raw-IP cause,
 must not be patched by raising the number.
 
+**Alongside Stage 1 (2026-10):** the AI Track work — the Python retrieval service
+in shadow mode and the local Docker compose stack — ran in parallel. It ticks no
+Stage 1 box and changes no Stage 1 scope. Details and open items: §8.
+
 **Frontend build break — FIXED 2026-08-29** (branch `frontend-vercel-build-fix`).
 Every Vercel deploy since the 2026-08-28 `seo-work` merge failed: the build ran
 `vite build && npx playwright install chromium && node scripts/prerender.js`, and
@@ -269,3 +280,94 @@ the critical deploy path in an environment that cannot run browsers. Fix (Rule 4
 (must be verified on a Vercel preview deploy, never local-only, next time).
 Verified: `cd frontend && npm run build` clean; `dist/` has `index.html` +
 assets + the static SEO files, no `support.html`.
+
+---
+
+## 8. Since 2026-09-10 — Python retriever, Docker, EC2 *(added 2026-10-26)*
+
+> Verified 2026-10-26 against `main` at `2a04c05`, plus the live Docker run in 8.2.
+> Items marked **owner-reported** come from the owner's own checks (Render logs,
+> AWS console), not from this repo.
+
+### 8.1 Python retriever — on `main`, shadow mode only
+
+- **What:** `zuno-retrieval-service` (separate repo, FastAPI) is a port of
+  `retriever.js` + `reranker.js`. Node reaches it through
+  `backend/src/rag/pythonRetrieverClient.js`; the switch is `searchChunks()` in
+  `backend/src/ask/step5.retrieveContent.js`.
+- **`USE_PYTHON_RETRIEVER`:** `false` (default) = Node only · `shadow` = Node
+  answers the student, Python runs un-awaited and is only logged (`[Shadow] DIFF`
+  on a mismatch; a Python failure is swallowed) · `true` = Python only, and the
+  client fails loudly (no silent fallback).
+- **Merged:** 2026-10-25, fast-forward, 5 commits (`3db7a6f` … `2a04c05`). Branch
+  `python-retriever` deleted locally and on GitHub.
+- **Parity** (from the service repo's `BACKLOG.md`): 22/22 on the Day-18 gate;
+  273-query bulk shadow = 269 PASS, 3 `SCORE_DIFF` (largest 0.0085), 1 `ORDER_DIFF`.
+- **Production (owner-reported, 2026-10-25):** `USE_PYTHON_RETRIEVER=shadow`,
+  `PYTHON_RETRIEVER_URL`, `INTERNAL_API_KEY` set on the Render backend. The Python
+  service on Render answers `/health` 200 (`db=zuno_prod`,
+  `text-embedding-3-large`). 4 live test questions showed parity in the logs.
+- **Not decided:** flipping to `true`. Only 4 live questions of evidence so far.
+  → `BACKLOG.md` A1.
+
+### 8.2 Docker (local run) — branch `docker-local-compose`, NOT merged
+
+- **Branch:** `docker-local-compose`, commit `d51a74d`, pushed to `origin`
+  2026-10-26. One commit on top of `main` (`2a04c05`).
+- **Contains:** `docker-compose.yml` (backend 5001, frontend 8080→80, retrieval
+  8000; retrieval is built from the sibling repo `../zuno-retrieval-service`),
+  `frontend/Dockerfile` (multi-stage → nginx) + `frontend/nginx.conf`, and a
+  hardened `backend/Dockerfile` (`node:22-slim`, non-root `node` user,
+  `npm ci --omit=dev`, `HEALTHCHECK`).
+- **Verified 2026-10-26 (owner ran it, output reviewed):** `docker compose up
+  --build` → all 3 containers up; backend and frontend `healthy`; `/health` 200 on
+  5001 and 8000, `/` 200 on 8080. One bug found and fixed on the way: the frontend
+  healthcheck used `localhost`, which resolves to `::1` inside the container while
+  nginx listens on IPv4 only, so the container showed `unhealthy` although the site
+  was fine. The healthcheck now uses `127.0.0.1`.
+- **Why not merged:** a push to `main` triggers `deploy-ec2.yml`, which runs
+  `/home/ubuntu/deploy-zuno.sh` on EC2. That script is **not in this repo**, so it
+  is unknown whether it builds `backend/Dockerfile`. Merge after the script has
+  been read on the box (the instance is stopped — see 8.3). Render is unaffected:
+  it builds plain Node (`DEPLOYMENT_PLAN.md`, "Why No Docker") — the Render
+  dashboard setting was not re-checked today.
+- **Hazard:** `backend/.env` points at `zuno_prod` and compose injects it. A local
+  compose stack is a production-database stack: hit `/health` only, never send chat
+  questions through it. → `BACKLOG.md` O16.
+- **Untested:** Node→Python calls inside compose (the local flag is `false`).
+
+### 8.3 Deploy / EC2 facts
+
+- `deploy-ec2.yml`: push to `main` → SSH → `bash /home/ubuntu/deploy-zuno.sh`.
+  Secrets: `EC2_HOST`, `EC2_USERNAME`, `EC2_SSH_KEY`.
+- **Not gated by CI.** `ci.yml` and `deploy-ec2.yml` both trigger on push to
+  `main`, independently — no `needs` / `workflow_run` — despite the file's comment
+  "after CI passes". → `BACKLOG.md` B1.
+- **EC2 instance state: stopped** (owner-reported, 2026-10-26). On 2026-10-25
+  `api.learnzuno.in` resolved to the EC2 address and TCP 443 timed out (cause not
+  diagnosed). Do not start the instance just to read the script: a stop/start
+  normally changes the public IP unless an Elastic IP is attached, which would
+  stale both the DNS A record and the `EC2_HOST` secret.
+- **Open question (needs the owner):** which backend serves real students —
+  Render, or EC2 via `api.learnzuno.in`? Check what the Vercel build's
+  `VITE_API_BASE_URL` points to. Until answered, Render is the only backend
+  confirmed reachable (2026-10-25).
+
+### 8.4 Found while doing the above — parked, not fixed
+
+All logged in `BACKLOG.md`, bucketed per `AUDIT_RULES.md` Rule 2: **B1** deploy
+not gated by CI · **R7** JWT secrets below the 32-character minimum (local `.env`;
+**production values unchecked**) · **O16** local env points at the prod database · **O17**
+`zuno-retrieval` container has no healthcheck · **A1** shadow → `true` cutover
+criteria.
+
+### 8.5 Not audited today
+
+- Other local branches exist and were not inspected: `learn-track`,
+  `latency-audit`, `phase1-golden-dump`, `codex-fix-chapter-progress-user-index`,
+  `guestID`, `quiz-phase0.5-bulk`. `main` is the source of truth.
+- Untracked in the owner's working tree (never committed, so on one disk only):
+  `NEW_REPO_CLAUDE.md`, `PHASE1_PYTHON_RAG_ROADMAP.md`, `ZUNO_VERIFIED_FACTS.md`,
+  `backend/golden/`, `backend/scripts/dumpFocusModeRetrieval.js`,
+  `backend/scripts/dumpGoldenRetrieval.js`. Python-Phase-1 artifacts; a
+  commit-or-discard decision is pending.

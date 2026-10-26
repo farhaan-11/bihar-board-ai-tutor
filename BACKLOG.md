@@ -9,6 +9,32 @@ Source: full Ask-pipeline audit, 2026-08-28. That audit produced 25 findings.
 8 were BROKEN and moved to `STAGE1_DONE.md`. The rest are below, honestly
 re-classified — most were opinions presented as problems.
 
+**Addendum 2026-10-26** (found during the `PROJECT_STATE.md` §8 sync, after the
+Python retriever / Docker / EC2 work): **B1**, **R7**, **O16**, **O17**, **A1**.
+Each carries its Rule 2 bucket and its evidence. Nothing here was fixed.
+
+---
+
+## 🔴 BROKEN — found after the Stage 1 list was frozen
+
+### B1. `deploy-ec2.yml` deploys even when CI is red
+**Trigger:** a push to `main` while `ci.yml` fails (`test:chunks`, `test:study-map`,
+the curriculum-resolver tests, or the frontend build).
+**Wrong result:** `deploy-ec2.yml` still SSHes in and runs `deploy-zuno.sh`. The
+file's own comment says "after CI passes", but both workflows trigger
+independently on `push: branches: [main]`, with no `needs` / `workflow_run`.
+**Where:** `.github/workflows/deploy-ec2.yml`, `.github/workflows/ci.yml`
+**Evidence:** read from the workflow files on `main` (`2a04c05`) — config-verified,
+not reproduced live (reproducing it would trigger a real deploy).
+
+**Fix direction (Rule 4 — removes the cause):** make the deploy depend on CI — a
+`workflow_run` trigger gated on `conclusion == 'success'`, or move the deploy into
+`ci.yml` behind `needs:`. Do **not** add a "check CI status" step inside the
+deploy; the cause is two independent triggers.
+**Stage:** not in `STAGE1_DONE.md` by default. The owner decides whether it joins
+Section G. Context: the EC2 instance is stopped today (`PROJECT_STATE.md` §8.3),
+so right now this deploy job would fail at the SSH step anyway.
+
 ---
 
 ## 🟡 RISK — works today, fails at a named threshold
@@ -80,6 +106,25 @@ The cause is the key, not the number.
 **Blocking condition:** must be fixed before onboarding any single-classroom /
 single-school-wifi group. Fine for a launch cohort on separate home connections.
 (Also noted in `PROJECT_STATE.md` §4 + §7.)
+
+---
+
+### R7. JWT secrets shorter than the server's own 32-character minimum
+**Threshold:** secret length < 32 characters — the backend prints this warning on
+every boot.
+**Where:** `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`. The local
+`backend/.env` triggers it (seen in the 2026-10-26 Docker boot log); the exact
+lengths are deliberately not recorded here.
+**Unknown:** the production values on Render / EC2 — **not checked**. Never paste
+them into chat or notes.
+
+**Why it matters:** an HS256 token signed with a short secret can be brute-forced
+offline, and whoever has the secret can forge a login for any user. Zuno stores
+minors' names, emails and chats.
+**Fix direction:** generate 32+ random characters per secret. Rotating logs every
+student out — that is a business call for the owner.
+**Promotion condition:** if the *production* secrets are < 32 characters, this
+becomes a Stage 1 item (Section F, student safety). Check production first.
 
 ---
 
@@ -185,6 +230,42 @@ The decision may still be correct; the stated reason is not.
 16 markdown plan files in the repo root. Several are point-in-time snapshots
 that contradict current code. `PROJECT_STATE.md` now supersedes most of them.
 **Stage 2 — archive, don't delete.**
+
+### O16. Local environment is wired to the production database
+`backend/.env` has `MONGO_URI` → `zuno_prod` while `NODE_ENV=development`, and the
+Python service's `.env` uses `zuno_prod` too. This was intentional so far — the
+parity and shadow tests needed the real chunks. The design improvement is a
+separate dev database.
+**Until then, the working rule:** a local run (dev server, `docker compose`,
+scripts) may be started and health-checked, but must not be driven with real chat
+turns — those write to production `chat_sessions`.
+**Stage 2.**
+
+### O17. `zuno-retrieval` container has no healthcheck
+`docker inspect zuno-retrieval` shows none, so compose or an orchestrator cannot
+tell a hung process from a healthy one. The Dockerfile lives in the **other** repo
+(`zuno-retrieval-service`), so fix it there. When adding one, probe `127.0.0.1`,
+not `localhost` (the same `::1` trap that showed the frontend as `unhealthy` on
+2026-10-26), and use Python's stdlib (`urllib`) — `python:*-slim` images do not
+ship `curl` / `wget`.
+**Stage 2.**
+
+---
+
+## AI Track — Python retrieval service
+
+### A1. Shadow → `true` cutover
+**Today:** shadow mode on production, with 4 live questions of evidence plus offline
+parity (22/22 gate, 269/273 bulk). Before `USE_PYTHON_RETRIEVER=true` the owner must
+settle:
+1. **Evidence:** how many real-traffic queries, at what DIFF rate, count as enough.
+2. **Failure behaviour:** the client fails loudly by design, so `true` has no Node
+   fallback — a Python outage becomes a student-facing error. Adding a fallback is
+   a new layer, so it needs an ADR and must remove a cause (Rule 4).
+3. **Latency:** the free-tier Render service took 21.4 s on a cold `/health`
+   (2026-10-25) against 0.37 s warm.
+
+Not Stage 1.
 
 ---
 
