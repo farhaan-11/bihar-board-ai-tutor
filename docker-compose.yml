@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: zuno-backend
+    env_file:
+      - backend/.env
+    environment:
+      PYTHON_RETRIEVER_URL: http://retrieval:8000  
+    ports:
+      - "5001:5001"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5001
+    container_name: zuno-frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+  retrieval:
+    build: ../zuno-retrieval-service
+    container_name: zuno-retrieval
+    env_file:
+      - ../zuno-retrieval-service/.env
+    ports:
+      - "8000:8000"
