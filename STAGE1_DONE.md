@@ -243,8 +243,16 @@ No fix is marked done on assertion alone.
 
 ## G. Operations — "what if it breaks"
 
-- [ ] **G1.** **OpenAI hard spend cap set** on the account
+- [x] **G1.** **OpenAI hard spend cap set** on the account
       *(A loop, a bug, or abuse could otherwise produce an unbounded bill. 2-minute setting.)*
+      **Done 2026-10-27 (owner-reported).** The hard cap is **Auto recharge OFF**
+      (Billing, account-wide): spend can never exceed the prepaid credit balance, for
+      every project and key — Zuno backend and the Python retrieval service alike.
+      On top of that, a **$15/month project spend limit** is set (Project Settings →
+      Limits); the page labels it as the trigger for spend alerts, so treat it as an
+      alert, not the cap. When credit runs out, OpenAI calls fail and students get the
+      "try again" message — the app does not crash. Raise the limit/credit when the
+      student count grows (~$0.00125/turn, `PROJECT_STATE.md` §6).
 - [ ] **G2.** MongoDB Atlas backup verified — free/shared tiers have no automated
       backups. Losing the DB means losing every student's progress.
 - [ ] **G3.** Rollback plan written down — how to revert Render and Vercel to the
