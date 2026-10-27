@@ -255,8 +255,14 @@ No fix is marked done on assertion alone.
       student count grows (~$0.00125/turn, `PROJECT_STATE.md` §6).
 - [ ] **G2.** MongoDB Atlas backup verified — free/shared tiers have no automated
       backups. Losing the DB means losing every student's progress.
-- [ ] **G3.** Rollback plan written down — how to revert Render and Vercel to the
+- [x] **G3.** Rollback plan written down — how to revert Render and Vercel to the
       previous working deploy, in one page
+      **Done 2026-10-27** — `docs/ROLLBACK.md`. Covers backend (Render rollback +
+      `git revert` on `main`, so the next auto-deploy does not bring the bug back),
+      frontend (Vercel promote previous deployment), env-var rollback,
+      `USE_PYTHON_RETRIEVER=false`, and states that a deploy rollback never restores
+      database data (that needs G2). Dashboard button names confirmed by owner
+      2026-10-27.
 - [ ] **G4.** A basic daily usage query or script exists — how many students,
       how many turns, how many errors.
       *(`models/studyEvent.model.js` already logs the events. Nothing reads them yet —
