@@ -401,6 +401,7 @@ Repo root holds only the files read every session: `PROJECT_STATE.md`,
 | `docs/latency/` | `LATENCY_PROBLEMS.md` | Paused — problems only, no solutions file yet. |
 | `docs/python-track/` | Python RAG roadmap + the retrieval repo's CLAUDE.md | Reference; the live copies are in `zuno-retrieval-service`. |
 | `docs/SESSION_DESIGN.md` | Locked session architecture | Reference. |
+| `docs/ROLLBACK.md` | What to do when a deploy breaks the site (Render, Vercel, env vars, Python flag, DB) | **Live ops doc** — Stage 1 G3. |
 
 Code comments still name some of these files by bare filename (e.g.
 `GUEST_SERVERSIDE_PLAN.md`); nothing reads them at runtime.
