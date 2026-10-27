@@ -10,7 +10,7 @@ This project is an education-focused RAG system. It helps Bihar Board Class 10 s
 
 Post-MVP. The core pipeline, auth system, and frontend are built and deployed live. Work now is pre-launch polish, bugfixes, and content gaps.
 
-Status, known bugs, and pending work are **not tracked in this file** — see `PRE_LAUNCH_BLOCKERS.md` and `TASKS.md` (same reasoning as `CLAUDE.md`'s "Current Project Status" section: duplicating live status here is what makes files like this go stale).
+Status, known bugs, and pending work are **not tracked in this file** — see `PROJECT_STATE.md` and `STAGE1_DONE.md` (same reasoning as `CLAUDE.md`'s "Current Project Status" section: duplicating live status here is what makes files like this go stale).
 
 Application code may be written when the user explicitly asks for implementation. Keep changes scoped to the active task.
 
@@ -21,7 +21,7 @@ The tutor must answer only from retrieved/indexed source content. If the availab
 ## Working Rules
 
 - Always read `CLAUDE.md` first for current architecture — this file covers working rules and protocol, `CLAUDE.md` covers what's actually built and how.
-- Read `TASKS.md` and `PRE_LAUNCH_BLOCKERS.md` before starting any new task.
+- Read `PROJECT_STATE.md` and `STAGE1_DONE.md` before starting any new task.
 - Work on one task at a time.
 - Do not overbuild — no admin panel, analytics, or quiz system unless explicitly asked.
 - MongoDB/Mongoose is used for chat sessions, chat history, tutor state, user accounts, and chunk vectors (MongoDB Atlas Vector Search — not a local JSON store).

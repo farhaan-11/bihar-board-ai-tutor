@@ -31,7 +31,7 @@ A real three-way test merge (`--no-commit --no-ff`, discarded after inspection)
 confirmed:
 - No conflict on the question bank data
 - Only two conflicts: `backend/package.json` (differing npm script names —
-  trivially compatible) and `QUIZ_BUILD_LOG.md` (a running log both branches
+  trivially compatible) and `docs/quiz/QUIZ_BUILD_LOG.md` (a running log both branches
   appended to differently)
 - The quiz engine (`backend/src/services/quiz/`) and this project's docs
   survive the merge untouched, because the branch never modified them

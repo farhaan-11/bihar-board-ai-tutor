@@ -89,7 +89,7 @@ Bihar Board Class 10 students studying Science (Physics, Chemistry, Biology). Th
 - **Caching**: Redis (`ioredis`) via Upstash — two-layer embedding + retrieval cache (`backend/src/cache/`), also backs rate limiting (`rate-limit-redis`) and JWT session state. Falls back to in-memory only if `REDIS_URL` is not set.
 - **Rate limiting**: `express-rate-limit` (+ Redis store) — three tiers: global, ask-specific, auth-specific
 - **Security headers**: `helmet`
-- **Email**: `nodemailer` (verification + password reset emails) — see `PRE_LAUNCH_BLOCKERS.md` P1 for a pending migration to Resend API (Render blocks outbound SMTP)
+- **Email**: `nodemailer` (verification + password reset emails) — see `docs/archive/plans/PRE_LAUNCH_BLOCKERS.md` P1 for a pending migration to Resend API (Render blocks outbound SMTP)
 - **Markdown parsing**: `gray-matter` (frontmatter), custom heading-based chunker
 - **Env config**: `dotenv`
 - **HTTP logging**: `morgan`
@@ -114,26 +114,23 @@ bihar-board-ai-tutor/
 ├── AGENTS.md                        AI agent rules for this project
 ├── CLAUDE.md                        This file
 ├── README.md                        Project overview and RAG commands
-├── TASKS.md                         Task history — see this + PRE_LAUNCH_BLOCKERS.md for live status
-├── PRE_LAUNCH_BLOCKERS.md           Live bug/blocker tracker with severity tiers (P0/CRITICAL/HIGH/P2/LOW)
-├── DEPLOYMENT_PLAN.md               Deployment plan and live status
-├── UI_PLAN.md                       Frontend redesign plan
-├── HINGLISH_QUERY_FIX_PLAN.md       Active Hinglish query-handling fix plan
-├── SESSION_DESIGN.md                Locked session architecture doc — don't change without discussion
-├── QUIZ_SYSTEM_BLUEPRINT.md         Quiz System spec (audited 2026-08-02, see its §18)
-├── QUIZ_EXECUTION_PROTOCOL.md       How Quiz work is run — rules, session rhythm, Parking Lot
-├── QUIZ_BUILD_LOG.md                Quiz living state — current phase, DoD, Parking Lot, history
-├── ANALYSIS.md, DECISIONS.md         Historical snapshots — point-in-time, may be stale, prefer live code/TASKS.md
+├── PROJECT_STATE.md, STAGE1_DONE.md, AUDIT_RULES.md, BACKLOG.md   The 4 governing files (see top of this file)
 ├── tasks/                           Individual task spec files (active: TASK-020, 024, 025)
 │   └── archive/                    Completed task specs (TASK-001–019, 021–023)
 ├── docs/                            Architecture notes, QA reports, API explanations
+│   ├── decisions/                   ADRs
+│   ├── SESSION_DESIGN.md            Locked session architecture doc — don't change without discussion
+│   ├── ZUNO_VERIFIED_FACTS.md       Evidence-only facts about the codebase (2026-10-08 snapshot)
+│   ├── quiz/                        Quiz System docs — PAUSED at Phase 5 (blueprint, protocol, build log, Phase 4 plan)
+│   ├── latency/                     LATENCY_PROBLEMS.md — PAUSED (problems only, no solutions yet)
+│   ├── python-track/                Python RAG roadmap + retrieval repo's CLAUDE.md (live copies in zuno-retrieval-service)
 │   ├── qa-report-2026-05-21.md      QA findings (point-in-time — verify against current code before trusting)
 │   ├── polish-notes.md              UX/tone issues from real chat testing
 │   ├── rag-embeddings-vector-store.md
 │   ├── tutor-engine-langchain-architecture.md
 │   ├── api-explanations/
 │   └── archive/
-│       ├── plans/                  Completed plan docs (BRAIN_FIX, PIPELINE_OPTIMIZATION, TOKEN_FIX, UI_REDESIGN_AUDIT, SESSION_FIX, PROBLEMS — frozen 2026-06-03 audit, superseded by PRE_LAUNCH_BLOCKERS.md)
+│       ├── plans/                  Finished plans + old trackers (BUG1/GUEST_SERVERSIDE/HINGLISH_QUERY/STREAM_FAILURE/SEO/DEPLOYMENT/UI plans, PRE_LAUNCH_BLOCKERS, TASKS, ANALYSIS, DECISIONS, plus older BRAIN_FIX, PIPELINE_OPTIMIZATION, TOKEN_FIX, UI_REDESIGN_AUDIT, SESSION_FIX, PROBLEMS) — history only, superseded by PROJECT_STATE.md
 │       ├── auth/, focus-mode/, global-mode/, hinglish-consistency/   Completed feature plans/verification checklists
 ├── data/
 │   └── class-10/science/            16 curated Markdown chapters (RAG source content)
@@ -247,7 +244,7 @@ GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_CALLBACK_URL=http://localhost:5000/api/v1/auth/google/callback
 
-# Auth — Email (Nodemailer — see PRE_LAUNCH_BLOCKERS.md P1 for pending Resend migration)
+# Auth — Email (Nodemailer — see docs/archive/plans/PRE_LAUNCH_BLOCKERS.md P1 for pending Resend migration)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=...
@@ -280,20 +277,20 @@ VITE_API_BASE_URL=http://localhost:5000
 
 Status, known bugs, and pending work are **not tracked in this file** — they change too often and duplicating them here is exactly what made this file go stale before. Check these instead, in order:
 
-- **`PRE_LAUNCH_BLOCKERS.md`** — live severity-tiered bug/blocker tracker (P0/CRITICAL/HIGH/P2/LOW), updated as issues are found and fixed. Also the place for non-code/content gaps (see its "Active Task Workspace" section).
-- **`TASKS.md`** — task history and stage tracking.
+- **`PROJECT_STATE.md`** — what exists right now, branch state, known issues.
+- **`STAGE1_DONE.md`** — the current stage's checklist; the next unticked section is the current work.
+- **`BACKLOG.md`** — everything parked.
 - **`tasks/`** — active task specs not yet archived (currently: TASK-020 backlog, TASK-024, TASK-025).
-- Whatever plan file is newest in the repo root (e.g. `HINGLISH_QUERY_FIX_PLAN.md`) — usually the actively-worked task.
 
-Before starting new work, skim `PRE_LAUNCH_BLOCKERS.md`'s "Active Task Workspace" section and the newest root-level plan file for what's currently in flight.
+`docs/archive/plans/PRE_LAUNCH_BLOCKERS.md` and `TASKS.md` are the older trackers (last updated 2026-07) — history only, superseded by the files above.
 
 ---
 
 ## Key Rules for All Future Work
 
 ### Before coding
-- Read `TASKS.md` and `PRE_LAUNCH_BLOCKERS.md` before starting any new task (see "Current Project Status" above)
-- `docs/qa-report-2026-05-21.md` and `ANALYSIS.md` are point-in-time snapshots — useful for history, but verify against current code before trusting anything specific from them
+- Read `PROJECT_STATE.md` and `STAGE1_DONE.md` before starting any new task (see "Current Project Status" above)
+- `docs/qa-report-2026-05-21.md` and `docs/archive/plans/ANALYSIS.md` are point-in-time snapshots — useful for history, but verify against current code before trusting anything specific from them
 - Always ask before big architectural changes
 - Analysis before code
 
@@ -328,7 +325,9 @@ Zuno must answer ONLY from retrieved/indexed source content. If retrieved contex
 
 ---
 
-## 🎯 Quiz System Work — Follow the Protocol (ACTIVE)
+## 🎯 Quiz System Work — Follow the Protocol (PAUSED at Phase 5 — not Stage 1)
+
+All Quiz docs live in **`docs/quiz/`**.
 
 If the user's request touches the Quiz System in any way (chapter gate quiz, practice quiz hub,
 question bank, `QUIZ_SYSTEM_BLUEPRINT.md`, or any "Phase N" of it), **a fixed working protocol
@@ -336,14 +335,14 @@ applies. Do not improvise a different approach.**
 
 **Read these two files first, in this order — before doing anything else:**
 
-1. **`QUIZ_BUILD_LOG.md`** — living state: which phase we're on, its Definition of Done, the
+1. **`docs/quiz/QUIZ_BUILD_LOG.md`** — living state: which phase we're on, its Definition of Done, the
    Parking Lot, and what happened last session. This is the resume point. Read it so the user
    never has to re-explain where things stand.
-2. **`QUIZ_EXECUTION_PROTOCOL.md`** — the rulebook. Roles, the 4-beat session rhythm, the
+2. **`docs/quiz/QUIZ_EXECUTION_PROTOCOL.md`** — the rulebook. Roles, the 4-beat session rhythm, the
    Parking Lot triage rule, the baseline-test rule, STOP conditions, and the banned-behaviour
    list. Follow it exactly.
 
-Spec itself is `QUIZ_SYSTEM_BLUEPRINT.md` (audited 2026-08-02 — corrections are inline as
+Spec itself is `docs/quiz/QUIZ_SYSTEM_BLUEPRINT.md` (audited 2026-08-02 — corrections are inline as
 `[AUDIT]` blocks, with a summary in its §18). Read only the section for the current phase, not
 the whole file.
 

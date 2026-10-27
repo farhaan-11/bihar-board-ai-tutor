@@ -34,7 +34,7 @@ Completed:
 Not included yet:
 
 - Formal evaluation question set beyond the current golden-set regression tests (`npm run test:golden`).
-- Curated foundation/orientation content (see `PRE_LAUNCH_BLOCKERS.md`).
+- Curated foundation/orientation content (see `docs/archive/plans/PRE_LAUNCH_BLOCKERS.md`).
 - Frontend lesson-specific UI polish.
 
 ## Initial Scope

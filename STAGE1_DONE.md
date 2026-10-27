@@ -70,7 +70,7 @@ No fix is marked done on assertion alone.
       the `parse_error` fallback branch in `step4.decideRetrieval.js` is deleted. A
       genuine decider failure now throws `ProviderUnavailableError` → honest "try again"
       message, never a false scope rejection. Removes the cause (fallible free-text JSON
-      parsing) per `AUDIT_RULES.md` Rule 4. See `BUG1_FIX_PLAN.md` + **ADR-011**.
+      parsing) per `AUDIT_RULES.md` Rule 4. See `docs/archive/plans/BUG1_FIX_PLAN.md` + **ADR-011**.
       Verified: `npm run test:decider-structured` (mocked, failing-test → passing-test)
       **and** a live dev-server run (real OpenAI, `strict: true` accepted; Hinglish →
       English `searchQuery` translation still works).
