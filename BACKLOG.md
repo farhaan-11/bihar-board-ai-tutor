@@ -276,7 +276,7 @@ Not Stage 1.
 ## SEO
 
 ### S1. Pre-render `/` and `/support` for non-JS crawlers
-**Where:** `frontend/` build, `SEO_PLAN.md` Phase 6
+**Where:** `frontend/` build, `docs/archive/plans/SEO_PLAN.md` Phase 6
 
 The first attempt (Playwright prerender in the build) never worked on Vercel —
 `chrome-headless-shell` exits 127, missing system libs, no way to install them

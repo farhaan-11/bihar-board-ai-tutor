@@ -1,0 +1,646 @@
+{
+  "generatedAt": "2026-10-13T14:27:04.206Z",
+  "embeddingModel": "text-embedding-3-large",
+  "topK": 5,
+  "candidateTopK": 50,
+  "minScore": 0.55,
+  "mode": "focus",
+  "entries": [
+    {
+      "query": "define nutrition in humans",
+      "metadataFilter": {
+        "subject": "Science",
+        "section": "Biology",
+        "chapter_no": 1
+      },
+      "requireTermMatchForLatinQuery": true,
+      "queryTerms": [
+        "nutrition"
+      ],
+      "debug": {
+        "candidateCountBeforeRerank": 44,
+        "countAfterMinScore": 42,
+        "countAfterFinalFiltering": 7,
+        "returnedCount": 5
+      },
+      "rawCandidates": [
+        {
+          "id": "biology-chapter-01-chunk-003",
+          "score": 0.7420294880867004
+        },
+        {
+          "id": "biology-chapter-01-chunk-007",
+          "score": 0.7261340022087097
+        },
+        {
+          "id": "biology-chapter-01-chunk-009",
+          "score": 0.724256694316864
+        },
+        {
+          "id": "biology-chapter-01-chunk-030",
+          "score": 0.706404447555542
+        },
+        {
+          "id": "biology-chapter-01-chunk-008",
+          "score": 0.696462869644165
+        },
+        {
+          "id": "biology-chapter-01-chunk-032",
+          "score": 0.6675167083740234
+        },
+        {
+          "id": "biology-chapter-01-chunk-001",
+          "score": 0.6639849543571472
+        },
+        {
+          "id": "biology-chapter-01-chunk-041",
+          "score": 0.6623066663742065
+        },
+        {
+          "id": "biology-chapter-01-chunk-040",
+          "score": 0.647712767124176
+        },
+        {
+          "id": "biology-chapter-01-chunk-017",
+          "score": 0.6408330202102661
+        },
+        {
+          "id": "biology-chapter-01-chunk-036",
+          "score": 0.6387829184532166
+        },
+        {
+          "id": "biology-chapter-01-chunk-012",
+          "score": 0.633285403251648
+        },
+        {
+          "id": "biology-chapter-01-chunk-034",
+          "score": 0.6282914876937866
+        },
+        {
+          "id": "biology-chapter-01-chunk-011",
+          "score": 0.6282908916473389
+        },
+        {
+          "id": "biology-chapter-01-chunk-043",
+          "score": 0.624545693397522
+        },
+        {
+          "id": "biology-chapter-01-chunk-002",
+          "score": 0.6198173761367798
+        },
+        {
+          "id": "biology-chapter-01-chunk-038",
+          "score": 0.6159704327583313
+        },
+        {
+          "id": "biology-chapter-01-chunk-023",
+          "score": 0.6132435202598572
+        },
+        {
+          "id": "biology-chapter-01-chunk-022",
+          "score": 0.6087652444839478
+        },
+        {
+          "id": "biology-chapter-01-chunk-042",
+          "score": 0.6046926975250244
+        },
+        {
+          "id": "biology-chapter-01-chunk-026",
+          "score": 0.6044001579284668
+        },
+        {
+          "id": "biology-chapter-01-chunk-028",
+          "score": 0.6043606996536255
+        },
+        {
+          "id": "biology-chapter-01-chunk-013",
+          "score": 0.6027460098266602
+        },
+        {
+          "id": "biology-chapter-01-chunk-033",
+          "score": 0.6011861562728882
+        },
+        {
+          "id": "biology-chapter-01-chunk-031",
+          "score": 0.5946915149688721
+        },
+        {
+          "id": "biology-chapter-01-chunk-035",
+          "score": 0.5928786396980286
+        },
+        {
+          "id": "biology-chapter-01-chunk-044",
+          "score": 0.5889505743980408
+        },
+        {
+          "id": "biology-chapter-01-chunk-027",
+          "score": 0.5852605700492859
+        },
+        {
+          "id": "biology-chapter-01-chunk-021",
+          "score": 0.5842504501342773
+        },
+        {
+          "id": "biology-chapter-01-chunk-010",
+          "score": 0.5840151906013489
+        },
+        {
+          "id": "biology-chapter-01-chunk-005",
+          "score": 0.5824577808380127
+        },
+        {
+          "id": "biology-chapter-01-chunk-018",
+          "score": 0.5795840620994568
+        },
+        {
+          "id": "biology-chapter-01-chunk-024",
+          "score": 0.5793213844299316
+        },
+        {
+          "id": "biology-chapter-01-chunk-015",
+          "score": 0.5784556269645691
+        },
+        {
+          "id": "biology-chapter-01-chunk-037",
+          "score": 0.5782961249351501
+        },
+        {
+          "id": "biology-chapter-01-chunk-025",
+          "score": 0.5739262700080872
+        },
+        {
+          "id": "biology-chapter-01-chunk-020",
+          "score": 0.5728394985198975
+        },
+        {
+          "id": "biology-chapter-01-chunk-004",
+          "score": 0.5695971250534058
+        },
+        {
+          "id": "biology-chapter-01-chunk-014",
+          "score": 0.5592395663261414
+        },
+        {
+          "id": "biology-chapter-01-chunk-039",
+          "score": 0.5590121746063232
+        },
+        {
+          "id": "biology-chapter-01-chunk-016",
+          "score": 0.5573102831840515
+        },
+        {
+          "id": "biology-chapter-01-chunk-006",
+          "score": 0.5500674843788147
+        },
+        {
+          "id": "biology-chapter-01-chunk-019",
+          "score": 0.5491436719894409
+        },
+        {
+          "id": "biology-chapter-01-chunk-029",
+          "score": 0.5471761226654053
+        }
+      ],
+      "finalTop5": [
+        {
+          "id": "biology-chapter-01-chunk-009",
+          "content": "Bihar Board Class 10 Science\nSection: Biology\nChapter: Life Processes\nTopic/Heading: Chapter 1: Life Processes > 8. Nutrition in Humans\n\nContent:\n[Context]\nBoard: Bihar Board\nClass: 10\nSubject: Science\nSection: Biology\nChapter: Life Processes\nTopic: Chapter 1: Life Processes > 8. Nutrition in Humans\n\n[Content]\n## 8. Nutrition in Humans\n\nHumans have a complex digestive system. The alimentary canal is a long tube extending from the mouth to the anus.\n\nMain organs of the human digestive system:\n\n- Mouth\n- Oesophagus\n- Stomach\n- Small intestine\n- Large intestine\n- Rectum\n- Anus\n\nAssociated glands:\n\n- Salivary glands\n- Liver\n- Pancreas\n\n---\n\n#### 8.1.1 Mouth\n\nDigestion begins in the mouth.\n\nFunctions:\n\n- Teeth break food into smaller pieces.\n- Saliva moistens food.\n- Tongue mixes food with saliva.\n- Salivary amylase digests starch into sugar.\n\nImportant enzyme:\n\n```txt\nSalivary amylase: starch → sugar\n```\n\n#### 8.1.2 Oesophagus\n\nThe oesophagus carries food from the mouth to the stomach.\n\nFood moves through the alimentary canal by rhythmic contraction and relaxation of muscles. This movement is called peristalsis.",
+          "metadata": {
+            "chunk_id": "biology-chapter-01-chunk-009",
+            "board": "Bihar Board",
+            "class": 10,
+            "subject": "Science",
+            "section": "Biology",
+            "chapter_no": 1,
+            "original_science_chapter_no": 6,
+            "chapter_title": "Life Processes",
+            "source_path": "../data/class-10/science/biology/chapter-01-life-processes.md",
+            "file_name": "chapter-01-life-processes.md",
+            "chunk_index": 9,
+            "heading_path": "Chapter 1: Life Processes > 8. Nutrition in Humans",
+            "heading_level": 2,
+            "content_type": "definition",
+            "char_count": 979,
+            "word_count": 155,
+            "line_count": 53,
+            "splitter": "heading_merge",
+            "chunk_size_config": 1200,
+            "chunk_overlap_config": 180,
+            "topic_ids": [
+              "science.biology.chapter-01.topic-17"
+            ],
+            "originalText": "## 8. Nutrition in Humans\n\nHumans have a complex digestive system. The alimentary canal is a long tube extending from the mouth to the anus.\n\nMain organs of the human digestive system:\n\n- Mouth\n- Oesophagus\n- Stomach\n- Small intestine\n- Large intestine\n- Rectum\n- Anus\n\nAssociated glands:\n\n- Salivary glands\n- Liver\n- Pancreas\n\n---\n\n#### 8.1.1 Mouth\n\nDigestion begins in the mouth.\n\nFunctions:\n\n- Teeth break food into smaller pieces.\n- Saliva moistens food.\n- Tongue mixes food with saliva.\n- Salivary amylase digests starch into sugar.\n\nImportant enzyme:\n\n```txt\nSalivary amylase: starch → sugar\n```\n\n#### 8.1.2 Oesophagus\n\nThe oesophagus carries food from the mouth to the stomach.\n\nFood moves through the alimentary canal by rhythmic contraction and relaxation of muscles. This movement is called peristalsis."
+          },
+          "score": 0.724256694316864,
+          "finalScore": 0.989256694316864,
+          "rerankDebug": {
+            "vectorScore": 0.724256694316864,
+            "keywordBoost": 0.095,
+            "intentBoost": 0.17,
+            "diversityPenalty": 0,
+            "matchedTerms": [
+              {
+                "term": "nutrition",
+                "fields": [
+                  "heading_path",
+                  "content"
+                ]
+              }
+            ],
+            "detectedIntent": "definition_or_explanation"
+          }
+        },
+        {
+          "id": "biology-chapter-01-chunk-003",
+          "content": "Bihar Board Class 10 Science\nSection: Biology\nChapter: Life Processes\nTopic/Heading: Chapter 1: Life Processes > 2. Nutrition\n\nContent:\n[Context]\nBoard: Bihar Board\nClass: 10\nSubject: Science\nSection: Biology\nChapter: Life Processes\nTopic: Chapter 1: Life Processes > 2. Nutrition\n\n[Content]\n## 2. Nutrition\n\nNutrition is the process by which organisms take in food and use it for energy, growth, repair, and maintenance.\n\nFood provides:\n\n- Energy\n- Carbon-based raw materials\n- Proteins and other building materials\n- Minerals and nutrients needed by cells\n\nOrganisms use different methods of nutrition depending on their body structure, food source, and environment.\n\nThere are two main types of nutrition:\n\n1. Autotrophic nutrition\n2. Heterotrophic nutrition\n\n---\n\n### 2.1 Autotrophic Nutrition\n\nAutotrophic nutrition is the mode of nutrition in which organisms prepare their own food from simple inorganic substances.\n\nExamples:\n\n- Green plants\n- Some bacteria\n\nGreen plants prepare food by photosynthesis.\n\n### Photosynthesis\n\nPhotosynthesis is the process by which green plants use carbon dioxide and water in the presence of sunlight and chlorophyll to make carbohydrates.\n\nGeneral equation:\n\n```txt\n6CO2 + 6H2O  --sunlight/chlorophyll-->  C6H12O6 + 6O2\n```\n\nIn words:\n\n```txt\nCarbon dioxide + Water  --sunlight/chlorophyll-->  Glucose + Oxygen\n```\n\nCarbohydrates formed during photosynthesis are used by plants for energy. Extra carbohydrates are stored as starch.",
+          "metadata": {
+            "chunk_id": "biology-chapter-01-chunk-003",
+            "board": "Bihar Board",
+            "class": 10,
+            "subject": "Science",
+            "section": "Biology",
+            "chapter_no": 1,
+            "original_science_chapter_no": 6,
+            "chapter_title": "Life Processes",
+            "source_path": "../data/class-10/science/biology/chapter-01-life-processes.md",
+            "file_name": "chapter-01-life-processes.md",
+            "chunk_index": 3,
+            "heading_path": "Chapter 1: Life Processes > 2. Nutrition",
+            "heading_level": 2,
+            "content_type": "concept",
+            "char_count": 1336,
+            "word_count": 193,
+            "line_count": 57,
+            "splitter": "heading_merge",
+            "chunk_size_config": 1200,
+            "chunk_overlap_config": 180,
+            "topic_ids": [
+              "science.biology.chapter-01.topic-04"
+            ],
+            "originalText": "## 2. Nutrition\n\nNutrition is the process by which organisms take in food and use it for energy, growth, repair, and maintenance.\n\nFood provides:\n\n- Energy\n- Carbon-based raw materials\n- Proteins and other building materials\n- Minerals and nutrients needed by cells\n\nOrganisms use different methods of nutrition depending on their body structure, food source, and environment.\n\nThere are two main types of nutrition:\n\n1. Autotrophic nutrition\n2. Heterotrophic nutrition\n\n---\n\n### 2.1 Autotrophic Nutrition\n\nAutotrophic nutrition is the mode of nutrition in which organisms prepare their own food from simple inorganic substances.\n\nExamples:\n\n- Green plants\n- Some bacteria\n\nGreen plants prepare food by photosynthesis.\n\n### Photosynthesis\n\nPhotosynthesis is the process by which green plants use carbon dioxide and water in the presence of sunlight and chlorophyll to make carbohydrates.\n\nGeneral equation:\n\n```txt\n6CO2 + 6H2O  --sunlight/chlorophyll-->  C6H12O6 + 6O2\n```\n\nIn words:\n\n```txt\nCarbon dioxide + Water  --sunlight/chlorophyll-->  Glucose + Oxygen\n```\n\nCarbohydrates formed during photosynthesis are used by plants for energy. Extra carbohydrates are stored as starch."
+          },
+          "score": 0.7420294880867004,
+          "finalScore": 0.9520294880867004,
+          "rerankDebug": {
+            "vectorScore": 0.7420294880867004,
+            "keywordBoost": 0.095,
+            "intentBoost": 0.115,
+            "diversityPenalty": 0,
+            "matchedTerms": [
+              {
+                "term": "nutrition",
+                "fields": [
+                  "heading_path",
+                  "content"
+                ]
+              }
+            ],
+            "detectedIntent": "definition_or_explanation"
+          }
+        },
+        {
+          "id": "biology-chapter-01-chunk-007",
+          "content": "Bihar Board Class 10 Science\nSection: Biology\nChapter: Life Processes\nTopic/Heading: Chapter 1: Life Processes > 6. Heterotrophic Nutrition\n\nContent:\n[Context]\nBoard: Bihar Board\nClass: 10\nSubject: Science\nSection: Biology\nChapter: Life Processes\nTopic: Chapter 1: Life Processes > 6. Heterotrophic Nutrition\n\n[Content]\n## 6. Heterotrophic Nutrition\n\nHeterotrophic nutrition is the mode of nutrition in which organisms depend directly or indirectly on other organisms for food.\n\nExamples:\n\n- Animals\n- Fungi\n- Most bacteria\n- Humans\n\nHeterotrophs use complex food materials prepared by autotrophs. These complex substances must be broken down into simpler molecules by enzymes before absorption.\n\n### Types / Examples of Heterotrophic Nutrition\n\n| Type | Description | Examples |\n|---|---|---|\n| Saprophytic nutrition | Food is broken down outside the body and then absorbed | Fungi, yeast, mushrooms |\n| Holozoic nutrition | Food is ingested and digested inside the body | Humans, amoeba, animals |\n| Parasitic nutrition | Food is obtained from a living host without killing it immediately | Cuscuta, ticks, lice, leech, tapeworm |\n\n---",
+          "metadata": {
+            "chunk_id": "biology-chapter-01-chunk-007",
+            "board": "Bihar Board",
+            "class": 10,
+            "subject": "Science",
+            "section": "Biology",
+            "chapter_no": 1,
+            "original_science_chapter_no": 6,
+            "chapter_title": "Life Processes",
+            "source_path": "../data/class-10/science/biology/chapter-01-life-processes.md",
+            "file_name": "chapter-01-life-processes.md",
+            "chunk_index": 7,
+            "heading_path": "Chapter 1: Life Processes > 6. Heterotrophic Nutrition",
+            "heading_level": 2,
+            "content_type": "table",
+            "char_count": 987,
+            "word_count": 152,
+            "line_count": 31,
+            "splitter": "heading_merge",
+            "chunk_size_config": 1200,
+            "chunk_overlap_config": 180,
+            "topic_ids": [
+              "science.biology.chapter-01.topic-14"
+            ],
+            "originalText": "## 6. Heterotrophic Nutrition\n\nHeterotrophic nutrition is the mode of nutrition in which organisms depend directly or indirectly on other organisms for food.\n\nExamples:\n\n- Animals\n- Fungi\n- Most bacteria\n- Humans\n\nHeterotrophs use complex food materials prepared by autotrophs. These complex substances must be broken down into simpler molecules by enzymes before absorption.\n\n### Types / Examples of Heterotrophic Nutrition\n\n| Type | Description | Examples |\n|---|---|---|\n| Saprophytic nutrition | Food is broken down outside the body and then absorbed | Fungi, yeast, mushrooms |\n| Holozoic nutrition | Food is ingested and digested inside the body | Humans, amoeba, animals |\n| Parasitic nutrition | Food is obtained from a living host without killing it immediately | Cuscuta, ticks, lice, leech, tapeworm |\n\n---"
+          },
+          "score": 0.7261340022087097,
+          "finalScore": 0.9361340022087097,
+          "rerankDebug": {
+            "vectorScore": 0.7261340022087097,
+            "keywordBoost": 0.095,
+            "intentBoost": 0.115,
+            "diversityPenalty": 0,
+            "matchedTerms": [
+              {
+                "term": "nutrition",
+                "fields": [
+                  "heading_path",
+                  "content"
+                ]
+              }
+            ],
+            "detectedIntent": "definition_or_explanation"
+          }
+        },
+        {
+          "id": "biology-chapter-01-chunk-008",
+          "content": "Bihar Board Class 10 Science\nSection: Biology\nChapter: Life Processes\nTopic/Heading: Chapter 1: Life Processes > 6. Heterotrophic Nutrition > 6.1 Nutrition in Amoeba\n\nContent:\n[Context]\nBoard: Bihar Board\nClass: 10\nSubject: Science\nSection: Biology\nChapter: Life Processes\nTopic: Chapter 1: Life Processes > 6. Heterotrophic Nutrition > 6.1 Nutrition in Amoeba\n\n[Content]\n### 6.1 Nutrition in Amoeba\n\nAmoeba is a unicellular organism.\n\nSteps of nutrition in Amoeba:\n\n1. Amoeba extends finger-like projections called pseudopodia.\n2. Pseudopodia surround the food particle.\n3. Food is enclosed in a food vacuole.\n4. Digestive enzymes break complex food into simpler substances.\n5. Digested food diffuses into the cytoplasm.\n6. Undigested food moves to the cell surface and is thrown out.\n\nImportant term:\n\n> Pseudopodia are temporary finger-like projections used by Amoeba for movement and food capture.\n\n---",
+          "metadata": {
+            "chunk_id": "biology-chapter-01-chunk-008",
+            "board": "Bihar Board",
+            "class": 10,
+            "subject": "Science",
+            "section": "Biology",
+            "chapter_no": 1,
+            "original_science_chapter_no": 6,
+            "chapter_title": "Life Processes",
+            "source_path": "../data/class-10/science/biology/chapter-01-life-processes.md",
+            "file_name": "chapter-01-life-processes.md",
+            "chunk_index": 8,
+            "heading_path": "Chapter 1: Life Processes > 6. Heterotrophic Nutrition > 6.1 Nutrition in Amoeba",
+            "heading_level": 3,
+            "content_type": "concept",
+            "char_count": 730,
+            "word_count": 109,
+            "line_count": 27,
+            "splitter": "heading_merge",
+            "chunk_size_config": 1200,
+            "chunk_overlap_config": 180,
+            "topic_ids": [
+              "science.biology.chapter-01.topic-14"
+            ],
+            "originalText": "### 6.1 Nutrition in Amoeba\n\nAmoeba is a unicellular organism.\n\nSteps of nutrition in Amoeba:\n\n1. Amoeba extends finger-like projections called pseudopodia.\n2. Pseudopodia surround the food particle.\n3. Food is enclosed in a food vacuole.\n4. Digestive enzymes break complex food into simpler substances.\n5. Digested food diffuses into the cytoplasm.\n6. Undigested food moves to the cell surface and is thrown out.\n\nImportant term:\n\n> Pseudopodia are temporary finger-like projections used by Amoeba for movement and food capture.\n\n---"
+          },
+          "score": 0.696462869644165,
+          "finalScore": 0.791462869644165,
+          "rerankDebug": {
+            "vectorScore": 0.696462869644165,
+            "keywordBoost": 0.095,
+            "intentBoost": 0,
+            "diversityPenalty": 0,
+            "matchedTerms": [
+              {
+                "term": "nutrition",
+                "fields": [
+                  "heading_path",
+                  "content"
+                ]
+              }
+            ],
+            "detectedIntent": "definition_or_explanation"
+          }
+        },
+        {
+          "id": "biology-chapter-01-chunk-012",
+          "content": "Bihar Board Class 10 Science\nSection: Biology\nChapter: Life Processes\nTopic/Heading: Chapter 1: Life Processes > 8. Nutrition in Humans > 8.1 Human Digestive System > 8.1.8 Villi\n\nContent:\n[Context]\nBoard: Bihar Board\nClass: 10\nSubject: Science\nSection: Biology\nChapter: Life Processes\nTopic: Chapter 1: Life Processes > 8. Nutrition in Humans > 8.1 Human Digestive System > 8.1.8 Villi\n\n[Content]\n#### 8.1.8 Villi\n\nThe inner lining of the small intestine has many finger-like projections called villi.\n\nFunctions of villi:\n\n- Increase surface area for absorption.\n- Absorb digested food.\n- Pass absorbed food into blood vessels.\n\n#### 8.1.9 Large Intestine\n\nThe large intestine absorbs water from undigested food.\n\nThe remaining waste is removed through the anus. This removal is controlled by the anal sphincter.\n\n---\n\n## 10. Respiration\n\nRespiration is the process by which food is broken down inside cells to release energy.\n\nThe energy released during respiration is used to make ATP.\n\nATP is the energy currency of the cell.\n\n### Cellular Respiration\n\nThe first step of respiration is the breakdown of glucose into pyruvate.\n\nThis occurs in the cytoplasm:\n\n```txt\nGlucose (6-carbon molecule) → Pyruvate (3-carbon molecule) + Energy\n```\n\nAfter this, pyruvate can follow different pathways depending on the presence or absence of oxygen.\n\n---\n\n#### 10.1.1 Anaerobic Respiration in Yeast\n\nIn the absence of oxygen, pyruvate is converted into ethanol and carbon dioxide.\n\n```txt\nGlucose → Pyruvate → Ethanol + Carbon dioxide + Energy\n```\n\nThis process occurs in yeast during fermentation.",
+          "metadata": {
+            "chunk_id": "biology-chapter-01-chunk-012",
+            "board": "Bihar Board",
+            "class": 10,
+            "subject": "Science",
+            "section": "Biology",
+            "chapter_no": 1,
+            "original_science_chapter_no": 6,
+            "chapter_title": "Life Processes",
+            "source_path": "../data/class-10/science/biology/chapter-01-life-processes.md",
+            "file_name": "chapter-01-life-processes.md",
+            "chunk_index": 12,
+            "heading_path": "Chapter 1: Life Processes > 8. Nutrition in Humans > 8.1 Human Digestive System > 8.1.8 Villi",
+            "heading_level": 2,
+            "content_type": "concept",
+            "char_count": 1401,
+            "word_count": 218,
+            "line_count": 58,
+            "splitter": "heading_merge",
+            "chunk_size_config": 1200,
+            "chunk_overlap_config": 180,
+            "topic_ids": [
+              "science.biology.chapter-01.topic-17",
+              "science.biology.chapter-01.topic-28"
+            ],
+            "originalText": "#### 8.1.8 Villi\n\nThe inner lining of the small intestine has many finger-like projections called villi.\n\nFunctions of villi:\n\n- Increase surface area for absorption.\n- Absorb digested food.\n- Pass absorbed food into blood vessels.\n\n#### 8.1.9 Large Intestine\n\nThe large intestine absorbs water from undigested food.\n\nThe remaining waste is removed through the anus. This removal is controlled by the anal sphincter.\n\n---\n\n## 10. Respiration\n\nRespiration is the process by which food is broken down inside cells to release energy.\n\nThe energy released during respiration is used to make ATP.\n\nATP is the energy currency of the cell.\n\n### Cellular Respiration\n\nThe first step of respiration is the breakdown of glucose into pyruvate.\n\nThis occurs in the cytoplasm:\n\n```txt\nGlucose (6-carbon molecule) → Pyruvate (3-carbon molecule) + Energy\n```\n\nAfter this, pyruvate can follow different pathways depending on the presence or absence of oxygen.\n\n---\n\n#### 10.1.1 Anaerobic Respiration in Yeast\n\nIn the absence of oxygen, pyruvate is converted into ethanol and carbon dioxide.\n\n```txt\nGlucose → Pyruvate → Ethanol + Carbon dioxide + Energy\n```\n\nThis process occurs in yeast during fermentation."
+          },
+          "score": 0.633285403251648,
+          "finalScore": 0.688285403251648,
+          "rerankDebug": {
+            "vectorScore": 0.633285403251648,
+            "keywordBoost": 0.055,
+            "intentBoost": 0,
+            "diversityPenalty": 0,
+            "matchedTerms": [
+              {
+                "term": "nutrition",
+                "fields": [
+                  "heading_path",
+                  "content"
+                ]
+              }
+            ],
+            "detectedIntent": "definition_or_explanation"
+          }
+        }
+      ]
+    },
+    {
+      "query": "human eye function",
+      "metadataFilter": {
+        "subject": "Science",
+        "section": "Biology",
+        "chapter_no": 1
+      },
+      "requireTermMatchForLatinQuery": true,
+      "queryTerms": [
+        "eye"
+      ],
+      "debug": {
+        "candidateCountBeforeRerank": 44,
+        "countAfterMinScore": 44,
+        "countAfterFinalFiltering": 0,
+        "returnedCount": 0
+      },
+      "rawCandidates": [
+        {
+          "id": "biology-chapter-01-chunk-035",
+          "score": 0.6216914653778076
+        },
+        {
+          "id": "biology-chapter-01-chunk-033",
+          "score": 0.6194084882736206
+        },
+        {
+          "id": "biology-chapter-01-chunk-034",
+          "score": 0.6127225756645203
+        },
+        {
+          "id": "biology-chapter-01-chunk-011",
+          "score": 0.6098339557647705
+        },
+        {
+          "id": "biology-chapter-01-chunk-020",
+          "score": 0.6091071367263794
+        },
+        {
+          "id": "biology-chapter-01-chunk-015",
+          "score": 0.6090487837791443
+        },
+        {
+          "id": "biology-chapter-01-chunk-010",
+          "score": 0.6090298295021057
+        },
+        {
+          "id": "biology-chapter-01-chunk-041",
+          "score": 0.608729362487793
+        },
+        {
+          "id": "biology-chapter-01-chunk-018",
+          "score": 0.608282208442688
+        },
+        {
+          "id": "biology-chapter-01-chunk-028",
+          "score": 0.6078742742538452
+        },
+        {
+          "id": "biology-chapter-01-chunk-031",
+          "score": 0.6077075004577637
+        },
+        {
+          "id": "biology-chapter-01-chunk-016",
+          "score": 0.6062626838684082
+        },
+        {
+          "id": "biology-chapter-01-chunk-043",
+          "score": 0.606215238571167
+        },
+        {
+          "id": "biology-chapter-01-chunk-012",
+          "score": 0.6046251654624939
+        },
+        {
+          "id": "biology-chapter-01-chunk-024",
+          "score": 0.6029322147369385
+        },
+        {
+          "id": "biology-chapter-01-chunk-009",
+          "score": 0.6028608083724976
+        },
+        {
+          "id": "biology-chapter-01-chunk-005",
+          "score": 0.6021817326545715
+        },
+        {
+          "id": "biology-chapter-01-chunk-038",
+          "score": 0.6007586717605591
+        },
+        {
+          "id": "biology-chapter-01-chunk-032",
+          "score": 0.6004512906074524
+        },
+        {
+          "id": "biology-chapter-01-chunk-026",
+          "score": 0.5991448760032654
+        },
+        {
+          "id": "biology-chapter-01-chunk-023",
+          "score": 0.5990861654281616
+        },
+        {
+          "id": "biology-chapter-01-chunk-040",
+          "score": 0.5982980728149414
+        },
+        {
+          "id": "biology-chapter-01-chunk-036",
+          "score": 0.5921411514282227
+        },
+        {
+          "id": "biology-chapter-01-chunk-004",
+          "score": 0.5919690132141113
+        },
+        {
+          "id": "biology-chapter-01-chunk-017",
+          "score": 0.5905519127845764
+        },
+        {
+          "id": "biology-chapter-01-chunk-030",
+          "score": 0.5895156264305115
+        },
+        {
+          "id": "biology-chapter-01-chunk-021",
+          "score": 0.589130163192749
+        },
+        {
+          "id": "biology-chapter-01-chunk-019",
+          "score": 0.5872508883476257
+        },
+        {
+          "id": "biology-chapter-01-chunk-025",
+          "score": 0.5869764685630798
+        },
+        {
+          "id": "biology-chapter-01-chunk-042",
+          "score": 0.5849646329879761
+        },
+        {
+          "id": "biology-chapter-01-chunk-001",
+          "score": 0.5835474729537964
+        },
+        {
+          "id": "biology-chapter-01-chunk-003",
+          "score": 0.5804305672645569
+        },
+        {
+          "id": "biology-chapter-01-chunk-008",
+          "score": 0.578395426273346
+        },
+        {
+          "id": "biology-chapter-01-chunk-006",
+          "score": 0.5775080919265747
+        },
+        {
+          "id": "biology-chapter-01-chunk-002",
+          "score": 0.5746049880981445
+        },
+        {
+          "id": "biology-chapter-01-chunk-039",
+          "score": 0.5745059251785278
+        },
+        {
+          "id": "biology-chapter-01-chunk-029",
+          "score": 0.5689201951026917
+        },
+        {
+          "id": "biology-chapter-01-chunk-044",
+          "score": 0.5675264596939087
+        },
+        {
+          "id": "biology-chapter-01-chunk-014",
+          "score": 0.5655442476272583
+        },
+        {
+          "id": "biology-chapter-01-chunk-027",
+          "score": 0.5604561567306519
+        },
+        {
+          "id": "biology-chapter-01-chunk-013",
+          "score": 0.557420015335083
+        },
+        {
+          "id": "biology-chapter-01-chunk-022",
+          "score": 0.5573149919509888
+        },
+        {
+          "id": "biology-chapter-01-chunk-007",
+          "score": 0.5571447610855103
+        },
+        {
+          "id": "biology-chapter-01-chunk-037",
+          "score": 0.5531086325645447
+        }
+      ],
+      "finalTop5": []
+    }
+  ]
+}

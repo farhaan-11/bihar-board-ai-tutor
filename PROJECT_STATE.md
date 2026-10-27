@@ -93,7 +93,7 @@ Sanskrit = **0**. This is a deliberate v1 scope decision — see `ADR-007`.
 | What | From | Notes |
 |---|---|---|
 | Backend | Render, from `main` | Start command: `node scripts/build-curriculum-index.js && node src/server.js` |
-| Frontend | Vercel, from `main` | Build is plain `vite build`. (A Playwright prerender step was added 2026-08-28 and reverted 2026-08-29 — it failed every Vercel deploy, `chrome-headless-shell` exit 127. See `SEO_PLAN.md` Phase 6 status note + `BACKLOG.md` S1.) |
+| Frontend | Vercel, from `main` | Build is plain `vite build`. (A Playwright prerender step was added 2026-08-28 and reverted 2026-08-29 — it failed every Vercel deploy, `chrome-headless-shell` exit 127. See `docs/archive/plans/SEO_PLAN.md` Phase 6 status note + `BACKLOG.md` S1.) |
 | Health check | `GET /health` | Note: **not** under `/api/v1` — known inconsistency, kept as-is |
 
 ⚠️ Deploying from any branch other than `main` risks shipping a partial product.
@@ -127,7 +127,7 @@ Updated 2026-08-28 (rows for 2026-09-10 and 2026-10-26 added later):
 | Branch | Status |
 |---|---|
 | `main` | ✅ Source of truth. Quiz system + SEO + governance system + BUG-1/BUG-2 + BUG-3 + BUG-4 fixes. |
-| `guestID` | ✅ **Merged into `main`** 2026-09-10 (`--no-ff`, `5d2da99`). Server-side guest identity — the client-generated guest UUID is replaced by a server-signed token (`ADR-012`); the separate bug where a guest's chat was never claimed on login (P2) is fixed too. 6 phases, owner ran the browser acceptance. `GUEST_TOKEN_SECRET` set in Render + EC2 envs by owner (server refuses to boot without it). The partial `{ guestId: 1 }` index on `chat_sessions` is auto-created by Mongoose `autoIndex`; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed. Plan + evidence: `GUEST_SERVERSIDE_PLAN.md`. Safe to delete the branch. |
+| `guestID` | ✅ **Merged into `main`** 2026-09-10 (`--no-ff`, `5d2da99`). Server-side guest identity — the client-generated guest UUID is replaced by a server-signed token (`ADR-012`); the separate bug where a guest's chat was never claimed on login (P2) is fixed too. 6 phases, owner ran the browser acceptance. `GUEST_TOKEN_SECRET` set in Render + EC2 envs by owner (server refuses to boot without it). The partial `{ guestId: 1 }` index on `chat_sessions` is auto-created by Mongoose `autoIndex`; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed. Plan + evidence: `docs/archive/plans/GUEST_SERVERSIDE_PLAN.md`. Safe to delete the branch. |
 | `bug1-decider-structured-output` | ✅ **Merged into `main`** 2026-08-28 (`--no-ff`). Carried the Stage 1 Section B triage + BUG-1/BUG-2 fix (ADR-011). Safe to delete. |
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
 | `docker-local-compose` | 🟡 **Pushed to `origin` 2026-10-26 (`d51a74d`), not merged — on purpose.** Local 3-service compose stack + hardened `backend/Dockerfile`. A push to `main` auto-deploys via `deploy-ec2.yml`, and the EC2 deploy script has not been read, so merge waits for that check. Details: §8.2. |
@@ -171,7 +171,7 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 > **BUG-1 + BUG-2 — fixed, pending merge** (branch `bug1-decider-structured-output`).
 > Decider chain converted to `withStructuredOutput(decisionSchema, { strict: true })`;
 > parse-error and unknown-intent fallbacks removed. Verified by
-> `npm run test:decider-structured` and a live dev-server run. See `BUG1_FIX_PLAN.md`
+> `npm run test:decider-structured` and a live dev-server run. See `docs/archive/plans/BUG1_FIX_PLAN.md`
 > + `ADR-011`. Stage 1 slice of `BACKLOG.md` O2; the tutor/intentRouter side of O2
 > remains Stage 2.
 | ~~BUG-3~~ | ✅ **Fixed** — merged to `main` 2026-08-28 (`--no-ff`). `INTENT_MEMORY_WHITELIST.CHOOSE_COURSE` → `[]`; its fields were dead (overwritten every turn by the `studyMode` force-sync block). Chapter switching works only via the request `chapterId` param — untouched. Verified by `npm run test:choose-course-memory`. See `STAGE1_DONE.md` Section C. |
@@ -329,7 +329,7 @@ assets + the static SEO files, no `support.html`.
   `/home/ubuntu/deploy-zuno.sh` on EC2. That script is **not in this repo**, so it
   is unknown whether it builds `backend/Dockerfile`. Merge after the script has
   been read on the box (the instance is stopped — see 8.3). Render is unaffected:
-  it builds plain Node (`DEPLOYMENT_PLAN.md`, "Why No Docker") — the Render
+  it builds plain Node (`docs/archive/plans/DEPLOYMENT_PLAN.md`, "Why No Docker") — the Render
   dashboard setting was not re-checked today.
 - **Hazard:** `backend/.env` points at `zuno_prod` and compose injects it. A local
   compose stack is a production-database stack: hit `/health` only, never send chat
@@ -366,8 +366,28 @@ criteria.
 - Other local branches exist and were not inspected: `learn-track`,
   `latency-audit`, `phase1-golden-dump`, `codex-fix-chapter-progress-user-index`,
   `guestID`, `quiz-phase0.5-bulk`. `main` is the source of truth.
-- Untracked in the owner's working tree (never committed, so on one disk only):
-  `NEW_REPO_CLAUDE.md`, `PHASE1_PYTHON_RAG_ROADMAP.md`, `ZUNO_VERIFIED_FACTS.md`,
-  `backend/golden/`, `backend/scripts/dumpFocusModeRetrieval.js`,
-  `backend/scripts/dumpGoldenRetrieval.js`. Python-Phase-1 artifacts; a
-  commit-or-discard decision is pending.
+- ~~Untracked Python-Phase-1 artifacts~~ — **committed 2026-10-27** (branch
+  `docs-reorganize`): `docs/python-track/` (`PHASE1_PYTHON_RAG_ROADMAP.md`,
+  `NEW_REPO_CLAUDE.md` — copies of what lives in `zuno-retrieval-service`),
+  `docs/ZUNO_VERIFIED_FACTS.md`, `backend/golden/`, and the two Node dump scripts
+  that produce it (`backend/scripts/dumpGoldenRetrieval.js`,
+  `dumpFocusModeRetrieval.js`).
+
+---
+
+## 9. Where the docs live *(added 2026-10-27)*
+
+Repo root holds only the files read every session: `PROJECT_STATE.md`,
+`STAGE1_DONE.md`, `AUDIT_RULES.md`, `BACKLOG.md`, `CLAUDE.md`, `AGENTS.md`,
+`README.md`. Everything else moved (history kept via `git mv`):
+
+| Folder | What | State |
+|---|---|---|
+| `docs/archive/plans/` | Finished plans + old trackers (`BUG1_FIX_PLAN`, `GUEST_SERVERSIDE_PLAN`, `HINGLISH_QUERY_FIX_PLAN`, `STREAM_FAILURE_FIX_PLAN`, `SEO_PLAN`, `DEPLOYMENT_PLAN`, `UI_PLAN`, `PRE_LAUNCH_BLOCKERS`, `TASKS`, `ANALYSIS`, `DECISIONS`) | Done. History only — superseded by this file + `STAGE1_DONE.md`. |
+| `docs/quiz/` | Quiz blueprint, protocol, build log, Phase 4 plan | Paused at Phase 5 (not Stage 1). |
+| `docs/latency/` | `LATENCY_PROBLEMS.md` | Paused — problems only, no solutions file yet. |
+| `docs/python-track/` | Python RAG roadmap + the retrieval repo's CLAUDE.md | Reference; the live copies are in `zuno-retrieval-service`. |
+| `docs/SESSION_DESIGN.md` | Locked session architecture | Reference. |
+
+Code comments still name some of these files by bare filename (e.g.
+`GUEST_SERVERSIDE_PLAN.md`); nothing reads them at runtime.
