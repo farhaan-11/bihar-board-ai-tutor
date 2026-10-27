@@ -4,8 +4,11 @@
 > Any AI agent or developer starting work on this repo MUST read this file first.
 > Last verified: §1–§7 as of 2026-08-28 (verified against `main`, not from memory).
 > **§8 added 2026-10-26** — covers everything since 2026-09-10 (Python retriever,
-> Docker, EC2). Latest merge to `main`: `2a04c05` (2026-10-25), the Python retriever
-> client behind a flag + shadow mode. Re-verify §1–§7 before relying on them.
+> Docker, EC2). Re-verify §1–§7 before relying on them.
+> **Latest merges to `main` (re-verified 2026-10-27 from `git log`):** `6e65cb5`
+> (2026-10-27) docs reorganize — root cleanup, see §9 · `d70c4d0` (2026-10-26)
+> Docker compose — see §8.2 · `fdac29c` (2026-10-26) docs state sync · `2a04c05`
+> (2026-10-25) Python retriever client behind a flag + shadow mode.
 > Previous merge (Section C): BUG-8 — `askApiLimiter` now keyed by identity (`identityKeyGenerator`),
 > not raw IP. Section C (all 8 verified bugs) complete. Merged to `main`
 > 2026-09-09 (`--no-ff`, `1086b36`). `globalApiLimiter` (same raw-IP cause)
@@ -130,14 +133,22 @@ Updated 2026-08-28 (rows for 2026-09-10 and 2026-10-26 added later):
 | `guestID` | ✅ **Merged into `main`** 2026-09-10 (`--no-ff`, `5d2da99`). Server-side guest identity — the client-generated guest UUID is replaced by a server-signed token (`ADR-012`); the separate bug where a guest's chat was never claimed on login (P2) is fixed too. 6 phases, owner ran the browser acceptance. `GUEST_TOKEN_SECRET` set in Render + EC2 envs by owner (server refuses to boot without it). The partial `{ guestId: 1 }` index on `chat_sessions` is auto-created by Mongoose `autoIndex`; `backend/scripts/create-chat-session-guest-index.js` does it explicitly if needed. Plan + evidence: `docs/archive/plans/GUEST_SERVERSIDE_PLAN.md`. Safe to delete the branch. |
 | `bug1-decider-structured-output` | ✅ **Merged into `main`** 2026-08-28 (`--no-ff`). Carried the Stage 1 Section B triage + BUG-1/BUG-2 fix (ADR-011). Safe to delete. |
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
-| `docker-local-compose` | 🟡 **Pushed to `origin` 2026-10-26 (`d51a74d`), not merged — on purpose.** Local 3-service compose stack + hardened `backend/Dockerfile`. A push to `main` auto-deploys via `deploy-ec2.yml`, and the EC2 deploy script has not been read, so merge waits for that check. Details: §8.2. |
+| `docker-local-compose` | ✅ **Merged into `main`** 2026-10-26 22:29 (`--no-ff`, `d70c4d0`). Local 3-service compose stack + hardened `backend/Dockerfile`. The plan had been to wait until the EC2 deploy script was read; it was merged before that check. Safe today only because EC2 is stopped — see §8.2. Safe to delete the branch. |
 | `python-retriever` | ✅ **Merged into `main`** 2026-10-25 (fast-forward, `2a04c05`) and deleted locally + on GitHub. See §8.1. |
 
 **Merged and safe to delete:** `quiz`, `quiz-phase1..4`, `global`, `profile`,
 `logo`, `feat/support-page`, `stalefilefixes`, `DECIDER_GREETING_FIX`,
 `STREAM_FAILURE_FIX`, `codex-curriculum-resolvers`, `seo-work`,
 `bug1-decider-structured-output`, `bug3-choose-course-dead-whitelist`,
-`bug4-decider-stale-scope-exclusions`, `bug5-topic-id-projection-index`
+`bug4-decider-stale-scope-exclusions`, `bug5-topic-id-projection-index`.
+Still present locally, fully merged into `main` (checked 2026-10-27 with
+`git merge-base --is-ancestor`), safe to delete: `docker-local-compose`,
+`docs-render-is-prod`, `docs-state-sync-oct26`, `docs-reorganize`, `guestID`,
+`latency-audit`, `phase1-golden-dump`, `codex-fix-chapter-progress-user-index`
+(this one is checked out in a separate worktree,
+`../bihar-board-ai-tutor-index-worktree` — remove the worktree first).
+Not merged: `learn-track` (2 doc commits, interview-prep notes),
+`quiz-phase0.5-bulk` (frozen, ADR-010).
 
 ### ⚠️ Lesson learned (2026-08-28) — two, from the same day
 
@@ -310,10 +321,10 @@ assets + the static SEO files, no `support.html`.
 - **Not decided:** flipping to `true`. Only 4 live questions of evidence so far.
   → `BACKLOG.md` A1.
 
-### 8.2 Docker (local run) — branch `docker-local-compose`, NOT merged
+### 8.2 Docker (local run) — merged to `main` (`d70c4d0`, 2026-10-26)
 
-- **Branch:** `docker-local-compose`, commit `d51a74d`, pushed to `origin`
-  2026-10-26. One commit on top of `main` (`2a04c05`).
+- **Branch:** `docker-local-compose`, commit `d51a74d`, merged `--no-ff` as
+  `d70c4d0` on 2026-10-26 22:29 and pushed.
 - **Contains:** `docker-compose.yml` (backend 5001, frontend 8080→80, retrieval
   8000; retrieval is built from the sibling repo `../zuno-retrieval-service`),
   `frontend/Dockerfile` (multi-stage → nginx) + `frontend/nginx.conf`, and a
@@ -325,12 +336,15 @@ assets + the static SEO files, no `support.html`.
   healthcheck used `localhost`, which resolves to `::1` inside the container while
   nginx listens on IPv4 only, so the container showed `unhealthy` although the site
   was fine. The healthcheck now uses `127.0.0.1`.
-- **Why not merged:** a push to `main` triggers `deploy-ec2.yml`, which runs
-  `/home/ubuntu/deploy-zuno.sh` on EC2. That script is **not in this repo**, so it
-  is unknown whether it builds `backend/Dockerfile`. Merge after the script has
-  been read on the box (the instance is stopped — see 8.3). Render is unaffected:
-  it builds plain Node (`docs/archive/plans/DEPLOYMENT_PLAN.md`, "Why No Docker") — the Render
-  dashboard setting was not re-checked today.
+- **Merged before the planned check:** a push to `main` triggers `deploy-ec2.yml`,
+  which runs `/home/ubuntu/deploy-zuno.sh` on EC2. That script is **not in this
+  repo**, so it is unknown whether it builds `backend/Dockerfile`. The plan was to
+  read it before merging; the merge happened first. Today this is harmless: EC2 is
+  stopped (8.3), so every deploy run fails at the SSH step and changes nothing.
+  **Rule from now on:** read `deploy-zuno.sh` on the box before EC2 is ever started
+  again. Render is unaffected: it builds plain Node
+  (`docs/archive/plans/DEPLOYMENT_PLAN.md`, "Why No Docker") — the Render dashboard
+  setting was not re-checked.
 - **Hazard:** `backend/.env` points at `zuno_prod` and compose injects it. A local
   compose stack is a production-database stack: hit `/health` only, never send chat
   questions through it. → `BACKLOG.md` O16.
@@ -363,9 +377,8 @@ criteria.
 
 ### 8.5 Not audited today
 
-- Other local branches exist and were not inspected: `learn-track`,
-  `latency-audit`, `phase1-golden-dump`, `codex-fix-chapter-progress-user-index`,
-  `guestID`, `quiz-phase0.5-bulk`. `main` is the source of truth.
+- ~~Other local branches not inspected~~ — checked 2026-10-27: all fully merged
+  except `learn-track` and `quiz-phase0.5-bulk`. List in §3.
 - ~~Untracked Python-Phase-1 artifacts~~ — **committed 2026-10-27** (branch
   `docs-reorganize`): `docs/python-track/` (`PHASE1_PYTHON_RAG_ROADMAP.md`,
   `NEW_REPO_CLAUDE.md` — copies of what lives in `zuno-retrieval-service`),
