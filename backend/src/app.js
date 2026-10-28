@@ -56,7 +56,7 @@ app.get('/', (_req, res) => {
 
 app.use('/health', healthRoutes);
 
-// Apply global rate limiter only to API routes
+// Apply global rate limiter only to API routes------
 app.use('/api', globalApiLimiter);
 
 app.use('/api/v1/ask',              askRoutes);
