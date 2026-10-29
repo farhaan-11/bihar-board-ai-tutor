@@ -115,8 +115,8 @@ bihar-board-ai-tutor/
 ├── CLAUDE.md                        This file
 ├── README.md                        Project overview and RAG commands
 ├── PROJECT_STATE.md, STAGE1_DONE.md, AUDIT_RULES.md, BACKLOG.md   The 4 governing files (see top of this file)
-├── tasks/                           Individual task spec files (active: TASK-020, 024, 025)
-│   └── archive/                    Completed task specs (TASK-001–019, 021–023)
+├── tasks/                           Individual task spec files (active: TASK-020 backlog only)
+│   └── archive/                    Completed task specs (TASK-001–019, 021–025)
 ├── docs/                            Architecture notes, QA reports, API explanations
 │   ├── decisions/                   ADRs
 │   ├── SESSION_DESIGN.md            Locked session architecture doc — don't change without discussion
@@ -280,7 +280,7 @@ Status, known bugs, and pending work are **not tracked in this file** — they c
 - **`PROJECT_STATE.md`** — what exists right now, branch state, known issues.
 - **`STAGE1_DONE.md`** — the current stage's checklist; the next unticked section is the current work.
 - **`BACKLOG.md`** — everything parked.
-- **`tasks/`** — active task specs not yet archived (currently: TASK-020 backlog, TASK-024, TASK-025).
+- **`tasks/`** — active task specs not yet archived (currently: TASK-020 backlog only; TASK-024 and TASK-025 are done and archived).
 
 `docs/archive/plans/PRE_LAUNCH_BLOCKERS.md` and `TASKS.md` are the older trackers (last updated 2026-07) — history only, superseded by the files above.
 
