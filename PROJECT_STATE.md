@@ -254,7 +254,7 @@ pre-router so greetings never reach an LLM.
 See `STAGE1_DONE.md` for the launch checklist and the definition of "done".
 Do not start Stage 2 work before every Stage 1 box is ticked.
 
-**Progress (2026-08-28):**
+**Progress (updated 2026-10-29):**
 
 | Section | State |
 |---|---|
@@ -264,7 +264,7 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 | D — Testing | Not started. Note: `test:chat-db-models` and `test:golden` are broken/no-op on `main` — see §5. |
 | E — Real students | Not started. |
 | F — Legal & student safety | Not started. |
-| G — Operations | Not started. |
+| G — Operations | ✅ **5/5.** G1 (spend cap) + G3 (`docs/ROLLBACK.md`) done 2026-10-27; G2 (Atlas backup), G4 (usage script), G5 (support inbox) owner-reported done 2026-10-29. |
 
 **Next task:** Section C is done. **Section D (testing)** is the next Stage 1
 block — note `test:chat-db-models` and `test:golden` are broken/no-op on `main`
