@@ -253,8 +253,9 @@ No fix is marked done on assertion alone.
       alert, not the cap. When credit runs out, OpenAI calls fail and students get the
       "try again" message — the app does not crash. Raise the limit/credit when the
       student count grows (~$0.00125/turn, `PROJECT_STATE.md` §6).
-- [ ] **G2.** MongoDB Atlas backup verified — free/shared tiers have no automated
+- [x] **G2.** MongoDB Atlas backup verified — free/shared tiers have no automated
       backups. Losing the DB means losing every student's progress.
+      **Done (owner-reported 2026-10-29).**
 - [x] **G3.** Rollback plan written down — how to revert Render and Vercel to the
       previous working deploy, in one page
       **Done 2026-10-27** — `docs/ROLLBACK.md`. Covers backend (Render rollback +
@@ -263,12 +264,14 @@ No fix is marked done on assertion alone.
       `USE_PYTHON_RETRIEVER=false`, and states that a deploy rollback never restores
       database data (that needs G2). Dashboard button names confirmed by owner
       2026-10-27.
-- [ ] **G4.** A basic daily usage query or script exists — how many students,
+- [x] **G4.** A basic daily usage query or script exists — how many students,
       how many turns, how many errors.
       *(`models/studyEvent.model.js` already logs the events. Nothing reads them yet —
       verified 2026-08-28: no reporting script in `backend/scripts/`.)*
-- [ ] **G5.** Support inbox confirmed working end-to-end — a student submits via
+      **Done (owner-reported 2026-10-29).**
+- [x] **G5.** Support inbox confirmed working end-to-end — a student submits via
       `/support`, and a human actually sees it
+      **Done (owner-reported 2026-10-29).**
 
 ---
 
