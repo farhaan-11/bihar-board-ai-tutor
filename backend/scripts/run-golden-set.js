@@ -141,6 +141,14 @@ const run = async () => {
   console.log(`  Filter  : ${FILTER_CAT || 'All categories'}`);
   console.log(`══════════════════════════════════════════════════════\n`);
 
+  // Agar filter ne ek bhi query match nahi ki, to kuch chalega hi nahi. Use
+  // "clean pass" maanna khatarnak hai (false green — jaise galat --category type
+  // kar diya). Yahin saaf fail do.
+  if (queries.length === 0) {
+    console.log(RED(`✗ No queries matched${FILTER_CAT ? ` --category=${FILTER_CAT}` : ''}. Nothing ran.`));
+    process.exit(1);
+  }
+
   // Quick ping before running to fail fast if server is down
   try {
     const ping = await fetch(`${BASE_URL}/health`);
