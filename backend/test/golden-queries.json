@@ -189,7 +189,7 @@
     "expectedIntent": "EXPLAIN_MORE",
     "expectedResponseMode": "study_tutor",
     "qualityChecks": [],
-    "note": "Polite re-explain request"
+    "note": "Polite re-explain request. KNOWN FRESH-SESSION FAIL → GREETING: EXPLAIN_MORE only applies to Zuno's PREVIOUS reply (deciderPrompt rule 4), but this runner uses a fresh session with no prior turn, so context-less 'dobara samjhao' correctly falls back to GREETING. EXPLAIN_MORE needs a real previous turn — proper coverage is Stage 1 D2 (multi-turn). Left as a documented known-fail until D2."
   },
   {
     "id": "E04",
@@ -349,14 +349,14 @@
     "note": "Wrong subject (History not Science)"
   },
   {
-    "id": "O06",
-    "category": "OUT_OF_CONTEXT",
+    "id": "C07",
+    "category": "CONCEPT_QUESTION",
     "query": "Cell membrane ka kya kaam hai?",
     "studyMode": "global",
-    "expectedIntent": "OUT_OF_CONTEXT",
-    "expectedResponseMode": "redirect",
+    "expectedIntent": "CONCEPT_QUESTION",
+    "expectedResponseMode": "study_tutor",
     "qualityChecks": [],
-    "note": "Was misfiled as CONCEPT_QUESTION (C07) — cell structure/membrane is not in the Bihar Board Class 10 Science syllabus (data/class-10/science/ has zero mentions of it; Biology chapters cover Life Processes, Control & Coordination, Reproduction, Heredity, Environment, Natural Resources — not cell structure, which is a Class 9 NCERT topic). Verified 2026-08-02 against the actual data source before reclassifying."
+    "note": "Out-of-syllabus topic (cell structure is Class 9 NCERT, not Bihar Board Class 10). Post-BUG-4 the decider deliberately does NOT hard-reject such science-sounding topics as OUT_OF_CONTEXT — it classifies them CONCEPT_QUESTION and lets retrieval return insufficient_context (the real out-of-syllabus guard). This intent-level test only checks the intent; the retrieval-level safety is out of its scope. Previously expected OUT_OF_CONTEXT (set 2026-08-02, before BUG-4) — corrected 2026-11-02."
   },
 
   {
