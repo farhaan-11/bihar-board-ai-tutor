@@ -429,5 +429,209 @@
     "expectedResponseMode": "study_tutor",
     "qualityChecks": ["electricity", "current"],
     "note": "Course select + concept both — should prefer academic intent"
+  },
+
+  {
+    "id": "EX01",
+    "category": "EXAM_INFO",
+    "query": "Science ke board exam me kitne marks ka theory paper hota hai?",
+    "studyMode": "global",
+    "expectedIntent": "EXAM_INFO",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Exam marks question — first EXAM_INFO coverage (D1)"
+  },
+  {
+    "id": "EX02",
+    "category": "EXAM_INFO",
+    "query": "Electricity chapter kitne marks ka hai exam me?",
+    "studyMode": "global",
+    "expectedIntent": "EXAM_INFO",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Chapter-wise marks / weightage question"
+  },
+  {
+    "id": "EX03",
+    "category": "EXAM_INFO",
+    "query": "10th Science ka exam pattern aur marks distribution batao",
+    "studyMode": "global",
+    "expectedIntent": "EXAM_INFO",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Exam pattern question"
+  },
+
+  {
+    "id": "ES01",
+    "category": "EMOTIONAL_SUPPORT",
+    "query": "Mujhe board exam se bahut darr lag raha hai",
+    "studyMode": "global",
+    "expectedIntent": "EMOTIONAL_SUPPORT",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Exam fear — first EMOTIONAL_SUPPORT coverage (D1)"
+  },
+  {
+    "id": "ES02",
+    "category": "EMOTIONAL_SUPPORT",
+    "query": "Padhai me mann nahi lag raha, main pichad raha hoon",
+    "studyMode": "global",
+    "expectedIntent": "EMOTIONAL_SUPPORT",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Demotivation"
+  },
+  {
+    "id": "ES03",
+    "category": "EMOTIONAL_SUPPORT",
+    "query": "Itna syllabus hai, main kabhi complete nahi kar paunga, stress ho raha hai",
+    "studyMode": "global",
+    "expectedIntent": "EMOTIONAL_SUPPORT",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Overwhelm / stress"
+  },
+
+  {
+    "id": "R01",
+    "category": "REAL_INPUT",
+    "query": "विद्युत धारा क्या होती है",
+    "studyMode": "global",
+    "expectedIntent": "CONCEPT_QUESTION",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Pure Devanagari concept question"
+  },
+  {
+    "id": "R02",
+    "category": "REAL_INPUT",
+    "query": "समझ नहीं आया दोबारा समझाओ",
+    "studyMode": "global",
+    "expectedIntent": "EXPLAIN_MORE",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Devanagari re-explain request"
+  },
+  {
+    "id": "R03",
+    "category": "REAL_INPUT",
+    "query": "fotosynthesis kya h",
+    "studyMode": "global",
+    "expectedIntent": "CONCEPT_QUESTION",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Misspelling + SMS shortcut (h = hai)"
+  },
+  {
+    "id": "R04",
+    "category": "REAL_INPUT",
+    "query": "fisics pdhna h mujhe",
+    "studyMode": "global",
+    "expectedIntent": "CHOOSE_COURSE",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Misspelled subject + shortcut spelling"
+  },
+  {
+    "id": "R05",
+    "category": "REAL_INPUT",
+    "query": "science me kitne no ka paper hota h",
+    "studyMode": "global",
+    "expectedIntent": "EXAM_INFO",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Exam marks, shortcut (no = number, h = hai)"
+  },
+  {
+    "id": "R06",
+    "category": "REAL_INPUT",
+    "query": "ghar wale bht pressure dete h, tension ho rha h",
+    "studyMode": "global",
+    "expectedIntent": "EMOTIONAL_SUPPORT",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Family pressure, shortcut spelling"
+  },
+  {
+    "id": "R07",
+    "category": "REAL_INPUT",
+    "query": "kuch smjh nhi aa rha yrr dhang se samjhao",
+    "studyMode": "global",
+    "expectedIntent": "EXPLAIN_MORE",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Frustrated / aggressive re-explain request"
+  },
+  {
+    "id": "R08",
+    "category": "REAL_INPUT",
+    "query": "bakwaas app hai, kuch nhi aata tereko",
+    "studyMode": "global",
+    "expectedIntent": "UNSAFE_OR_ABUSIVE",
+    "expectedResponseMode": "redirect",
+    "qualityChecks": [],
+    "note": "Rude insult to the app"
+  },
+  {
+    "id": "R09",
+    "category": "REAL_INPUT",
+    "query": "sir ohm's law थोड़ा समझा दीजिए",
+    "studyMode": "global",
+    "expectedIntent": "CONCEPT_QUESTION",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Mixed Roman + Devanagari concept"
+  },
+  {
+    "id": "R10",
+    "category": "REAL_INPUT",
+    "query": "instagram reels kaise viral hote h",
+    "studyMode": "global",
+    "expectedIntent": "OUT_OF_CONTEXT",
+    "expectedResponseMode": "redirect",
+    "qualityChecks": [],
+    "note": "Off-topic (social media), shortcut spelling"
+  },
+  {
+    "id": "R11",
+    "category": "REAL_INPUT",
+    "query": "ab aage kya pdhna h",
+    "studyMode": "focus",
+    "chapterId": "science.physics.chapter-01",
+    "expectedIntent": "NEXT_STEP",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Next-step in focus mode, shortcut spelling (chapterId required for studyMode:focus)"
+  },
+  {
+    "id": "R12",
+    "category": "REAL_INPUT",
+    "query": "tu kuch nhi janta chutiya app",
+    "studyMode": "global",
+    "expectedIntent": "UNSAFE_OR_ABUSIVE",
+    "expectedResponseMode": "redirect",
+    "qualityChecks": [],
+    "note": "Stronger abusive (vulgar slur) — intentionally tests the safety filter's upper range"
+  },
+  {
+    "id": "R13",
+    "category": "REAL_INPUT",
+    "query": "मन नहीं लग रहा, लगता है मैं कुछ नहीं कर पाऊँगा",
+    "studyMode": "global",
+    "expectedIntent": "EMOTIONAL_SUPPORT",
+    "expectedResponseMode": "conversation",
+    "qualityChecks": [],
+    "note": "Devanagari emotional / demotivation"
+  },
+  {
+    "id": "R14",
+    "category": "REAL_INPUT",
+    "query": "namste sir electrisity ka chapter samjhao",
+    "studyMode": "global",
+    "expectedIntent": "CONCEPT_QUESTION",
+    "expectedResponseMode": "study_tutor",
+    "qualityChecks": [],
+    "note": "Greeting + misspelled academic — must be CONCEPT, not GREETING (blind-spot + messy)"
   }
 ]
