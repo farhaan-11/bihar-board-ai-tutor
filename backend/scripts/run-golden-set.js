@@ -8,13 +8,20 @@
  *   node scripts/run-golden-set.js                  → run and print results
  *   node scripts/run-golden-set.js --save-baseline  → run + save to test/golden-baseline-phase1.json
  *
- * Pass/Fail logic:
+ * Per-query outcome:
  *   PASS  = intent matches expectedIntent
- *   WARN  = intent matched but quality checks failed (partial pass)
+ *   WARN  = intent matched but quality (substring) checks missed — NOT a failure
  *   FAIL  = intent did not match
+ *   ERROR = HTTP / timeout / crash
+ *   SKIP  = provider_error (OpenAI rate-limit / down) — run is inconclusive
  *
  * Quality checks are heuristic only — they look for substrings in the answer text.
- * A quality check failure does NOT fail the test, it just raises a warning.
+ * Because the LLM's wording varies, a quality miss is only a WARN, never a failure.
+ *
+ * Exit code: 0 only when there were zero FAIL, ERROR and SKIP (WARN is allowed).
+ * Otherwise 1 — so a real regression actually fails the command, and a run cut
+ * short by rate-limits is not mistaken for a pass. This is a manual pre-launch
+ * smoke test (needs a live server + real LLM calls), not a CI gate.
  */
 
 import 'dotenv/config';
@@ -146,7 +153,12 @@ const run = async () => {
   }
 
   const results = [];
-  let passed = 0, warned = 0, failed = 0;
+  // Alag-alag counters taaki final verdict saaf rahe:
+  let passed = 0;          // intent sahi + quality bhi sahi
+  let warned = 0;          // intent sahi, par quality (shabd-match) miss — yeh FAIL nahi
+  let failedIntent = 0;    // intent galat — asli regression
+  let errored = 0;         // HTTP / timeout / crash — server-side problem
+  let providerErrors = 0;  // OpenAI rate-limit / down — code bug nahi, run adhoora (rerun)
 
   for (const query of queries) {
     process.stdout.write(`[${query.id}] ${query.category.padEnd(20)} "${query.query.slice(0, 40).padEnd(40)}" → `);
@@ -169,7 +181,7 @@ const run = async () => {
       result.outcome      = 'ERROR';
       result.actualIntent = null;
       result.error        = response.error;
-      failed++;
+      errored++;
     } else {
       // API wraps response in { success, message, data: {...} }
       const payload      = response.data ?? response;
@@ -180,7 +192,7 @@ const run = async () => {
         result.outcome      = 'SKIP';
         result.actualIntent = 'PROVIDER_ERROR';
         result.error        = payload.answer || 'provider_error';
-        failed++;
+        providerErrors++;
       } else {
         const actualIntent = payload.decision?.intent ?? 'UNKNOWN';
         const intentMatch  = actualIntent === query.expectedIntent;
@@ -197,7 +209,7 @@ const run = async () => {
         if (!intentMatch) {
           result.outcome = 'FAIL';
           console.log(RED(`FAIL  — got ${actualIntent} (expected ${query.expectedIntent})`));
-          failed++;
+          failedIntent++;
         } else if (!quality.passed) {
           result.outcome = 'WARN';
           console.log(YELLOW(`WARN  — intent ✓ but quality checks failed: [${quality.failed.join(', ')}]`));
@@ -217,18 +229,20 @@ const run = async () => {
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────
-  const total       = queries.length;
-  const accuracy    = ((passed + warned) / total * 100).toFixed(1);
-  const intentAccuracy = ((passed + warned) / total * 100).toFixed(1);
+  const total    = queries.length;
+  // "notClean" = jitne sawaal clean nahi nikle (intent-fail + error + rate-limit).
+  // Quality WARN ise count NAHI karta — woh sirf chetawni hai, fail nahi.
+  const notClean = failedIntent + errored + providerErrors;
 
   console.log(BOLD(`\n══════════════════════════════════════════════════════`));
   console.log(BOLD('  RESULTS SUMMARY'));
   console.log(`══════════════════════════════════════════════════════`);
-  console.log(`  Total   : ${total}`);
-  console.log(`  ${GREEN('PASS')}    : ${passed}`);
-  console.log(`  ${YELLOW('WARN')}    : ${warned}  (intent correct, quality checks failed)`);
-  console.log(`  ${RED('FAIL')}    : ${failed}  (intent wrong or error)`);
-  console.log(`  Intent accuracy : ${intentAccuracy}%  (target: ≥95%)`);
+  console.log(`  Total          : ${total}`);
+  console.log(`  ${GREEN('PASS')}           : ${passed}`);
+  console.log(`  ${YELLOW('WARN')}           : ${warned}  (intent sahi, quality shabd miss — fail nahi)`);
+  console.log(`  ${RED('FAIL')} (intent)  : ${failedIntent}`);
+  console.log(`  ${RED('ERROR')}          : ${errored}  (server crash / timeout)`);
+  console.log(`  ${YELLOW('RATE-LIMIT')}     : ${providerErrors}  (OpenAI down / limit — rerun)`);
   console.log(`══════════════════════════════════════════════════════\n`);
 
   // ── Per-category breakdown ─────────────────────────────────────────────────
@@ -251,13 +265,20 @@ const run = async () => {
   }
   console.log();
 
-  // ── Failed/Warned details ──────────────────────────────────────────────────
-  const problems = results.filter(r => r.outcome === 'FAIL' || r.outcome === 'WARN' || r.outcome === 'ERROR');
+  // ── Problem details (FAIL / ERROR / rate-limit / quality-WARN) ─────────────
+  const problems = results.filter(
+    r => r.outcome === 'FAIL' || r.outcome === 'WARN' || r.outcome === 'ERROR' || r.outcome === 'SKIP'
+  );
   if (problems.length > 0) {
-    console.log(BOLD('  Issues To Fix'));
+    console.log(BOLD('  Issues To Look At'));
     console.log('  ' + '─'.repeat(52));
     for (const r of problems) {
-      const prefix = r.outcome === 'FAIL' ? RED('FAIL') : r.outcome === 'ERROR' ? RED('ERR ') : YELLOW('WARN');
+      let prefix;
+      if (r.outcome === 'FAIL') prefix = RED('FAIL');
+      else if (r.outcome === 'ERROR') prefix = RED('ERR ');
+      else if (r.outcome === 'SKIP') prefix = YELLOW('SKIP');
+      else prefix = YELLOW('WARN');
+
       console.log(`  [${r.id}] ${prefix} — "${r.query}"`);
       if (r.outcome === 'FAIL') {
         console.log(`         Expected: ${r.expectedIntent}  Got: ${r.actualIntent}`);
@@ -271,11 +292,21 @@ const run = async () => {
     console.log();
   }
 
-  // ── Gate check ─────────────────────────────────────────────────────────────
-  if (parseFloat(intentAccuracy) >= 95) {
-    console.log(GREEN(BOLD('  ✓ GATE PASSED — Intent accuracy ≥ 95%. Ready for Phase 2.')));
+  // ── Final verdict + exit code ──────────────────────────────────────────────
+  // Rule: command tabhi PASS (exit 0) jab koi intent-fail, error ya rate-limit
+  // nahi tha. Quality WARN chalega. Warna exit 1 — taaki yeh asli test ban sake.
+  // (Pehle yeh hamesha exit 0 deta tha, chahe kitne bhi sawaal fail ho.)
+  if (notClean === 0) {
+    console.log(GREEN(BOLD('  ✓ CLEAN — har sawaal ka intent sahi mila.')));
   } else {
-    console.log(RED(BOLD('  ✗ GATE FAILED — Intent accuracy < 95%. Fix decider before Phase 2.')));
+    console.log(
+      RED(BOLD(`  ✗ NOT CLEAN — ${notClean} issue(s): ${failedIntent} intent-fail, ${errored} error, ${providerErrors} rate-limit.`))
+    );
+    // Sirf rate-limit = code theek hai, bas OpenAI ne jhatka diya → dobara chalao.
+    if (providerErrors > 0 && failedIntent === 0 && errored === 0) {
+      console.log(YELLOW('    (Sirf rate-limit — code problem nahi; thodi der baad dobara chalao.)'));
+    }
+    process.exitCode = 1;
   }
   console.log();
 
@@ -287,8 +318,9 @@ const run = async () => {
       totalQueries:   total,
       passed,
       warned,
-      failed,
-      intentAccuracy: intentAccuracy + '%',
+      failedIntent,
+      errored,
+      providerErrors,
       results,
     };
     writeFileSync(BASELINE_PATH, JSON.stringify(baseline, null, 2), 'utf8');
