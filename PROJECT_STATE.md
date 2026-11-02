@@ -5,7 +5,10 @@
 > Last verified: §1–§7 as of 2026-08-28 (verified against `main`, not from memory).
 > **§8 added 2026-10-26** — covers everything since 2026-09-10 (Python retriever,
 > Docker, EC2). Re-verify §1–§7 before relying on them.
-> **Latest merges to `main` (re-verified 2026-10-27 from `git log`):** `6e65cb5`
+> **Latest merges to `main`:** `2e7e611` + `dd190e3` (2026-11-02) Stage 1 D — fixed
+> the two broken test commands (`test:golden` now fail-able; `test:chat-db-models`
+> rewritten for embedded chatState). See §5. Earlier (re-verified 2026-10-27 from
+> `git log`): `6e65cb5`
 > (2026-10-27) docs reorganize — root cleanup, see §9 · `d70c4d0` (2026-10-26)
 > Docker compose — see §8.2 · `fdac29c` (2026-10-26) docs state sync · `2a04c05`
 > (2026-10-25) Python retriever client behind a flag + shadow mode.
@@ -212,17 +215,18 @@ Other test scripts: `test:chunks`, `test:study-map`, `test:curriculum-resolvers`
 `test:no-cache-fallback` (BUG-6), `test:glossary-devanagari` (BUG-7),
 `test:ask-limiter-identity` (BUG-8)
 
-### ⚠️ Two prescribed test commands are broken on `main` (verified 2026-08-28)
+### ✅ Both previously-broken test commands fixed (2026-11-02)
 
-Both are pre-existing and tracked in `STAGE1_DONE.md` Section D (D4, D5) — not new.
+These were broken on `main` as of 2026-08-28; both fixed and merged 2026-11-02
+(branches `stage1-d-fix-chat-db-models`, `stage1-d-fix-golden-exit`).
 
-| Command | Problem |
-|---|---|
-| `test:chat-db-models` | `scripts/test-chat-db-models.js:4` imports `src/models/chatState.model.js`, which does not exist (state was folded into `chatSession.model.js`). Test crashes on load with `ERR_MODULE_NOT_FOUND`. |
-| `test:golden` | `scripts/run-golden-set.js` needs a live server on `localhost:5001` — it is **not** mocked, despite CLAUDE.md describing it as "mocked decider/responder scenarios". Without a running dev server it reports 0 queries and exits 0 (a silent no-op). |
+| Command | Was broken because | Fix |
+|---|---|---|
+| `test:chat-db-models` | `scripts/test-chat-db-models.js` imported `src/models/chatState.model.js`, deleted when state was folded into `chatSession.model.js` → crashed on load (`ERR_MODULE_NOT_FOUND`). | Rewritten for the embedded-chatState API (`updateChatSessionState` / `session.chatState`); verified passing against the live DB. |
+| `test:golden` | `scripts/run-golden-set.js` runs the live `/api/v1/ask` (real LLM, not mocked), and its `run()` always exited 0 regardless of results — so it could never fail on a real regression. | Now exits non-zero on any intent mismatch, HTTP/timeout error, provider rate-limit, or zero-query run; quality substring checks stay WARN (LLM wording varies). It is a **manual pre-launch smoke test** (needs a live server + real LLM), not a CI gate. |
 
-Working baseline (the 3 that pass): `test:chunks`, `test:study-map`,
-`test:curriculum-resolvers`.
+All four baseline/model tests now pass: `test:chunks`, `test:study-map`,
+`test:curriculum-resolvers`, `test:chat-db-models` (`STAGE1_DONE.md` D5).
 
 ---
 
@@ -261,16 +265,17 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 | A — Repository hygiene | ✅ 5/5 |
 | B — Infrastructure | I2, I3 ✅ verified. I1 (Render paid), I4 (error monitoring), I5 (Redis paid) **deferred by owner** with accepted-risk notes in `STAGE1_DONE.md`. |
 | C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b) parked in `BACKLOG.md` R6. |
-| D — Testing | Not started. Note: `test:chat-db-models` and `test:golden` are broken/no-op on `main` — see §5. |
+| D — Testing | In progress. D5 ✅ (baseline suite, incl. the now-fixed `test:chat-db-models`); `test:golden` runner made fail-able + D3 decision recorded (2026-11-02). Remaining: D1 (EXAM_INFO/EMOTIONAL_SUPPORT cases), D2 (multi-turn), D4 (full 42-case golden run green). |
 | E — Real students | Not started. |
 | F — Legal & student safety | Not started. |
 | G — Operations | ✅ **5/5.** G1 (spend cap) + G3 (`docs/ROLLBACK.md`) done 2026-10-27; G2 (Atlas backup), G4 (usage script), G5 (support inbox) owner-reported done 2026-10-29. |
 
-**Next task:** Section C is done. **Section D (testing)** is the next Stage 1
-block — note `test:chat-db-models` and `test:golden` are broken/no-op on `main`
-(see §5, and STAGE1_DONE.md D4/D5). **Before any single-classroom / school-wifi
-onboarding:** fix `globalApiLimiter` (BACKLOG R6 / BUG-8b) — same raw-IP cause,
-must not be patched by raising the number.
+**Next task:** Section D (testing) in progress — both previously-broken test
+commands (`test:chat-db-models`, `test:golden`) fixed and merged 2026-11-02; D5
+done. Remaining D: D1 (golden cases for EXAM_INFO/EMOTIONAL_SUPPORT), D2
+(multi-turn), D4 (full 42-case golden run green). **Before any single-classroom /
+school-wifi onboarding:** fix `globalApiLimiter` (BACKLOG R6 / BUG-8b) — same
+raw-IP cause, must not be patched by raising the number.
 
 **Alongside Stage 1 (2026-10):** the AI Track work — the Python retrieval service
 in shadow mode and the local Docker compose stack — ran in parallel. It ticks no
