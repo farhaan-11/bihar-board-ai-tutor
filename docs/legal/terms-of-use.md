@@ -63,4 +63,4 @@ These Terms follow the laws of India.
 
 ## 9. Contact
 
-Questions about these Terms? Email us at **[SUPPORT_EMAIL]**.
+Questions about these Terms? Email us at **farhan@learnzuno.in**.

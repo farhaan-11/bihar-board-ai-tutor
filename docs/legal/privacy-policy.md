@@ -59,7 +59,7 @@ advertising.
 - You can ask us to **delete** your account and data.
 - You can ask to **see or correct** the information we hold about you.
 
-To do any of these, email us at **[SUPPORT_EMAIL]**. We do this by hand, so please
+To do any of these, email us at **farhan@learnzuno.in**. We do this by hand, so please
 allow a little time.
 
 ## 6. Children and minors
@@ -67,7 +67,7 @@ allow a little time.
 Zuno is made for Class 10 students, who are often under 18. If you are under 18,
 please use Zuno only with the knowledge and agreement of a parent or guardian. We
 collect as little information as possible, and we **never** track children for
-advertising. A parent or guardian can email us at **[SUPPORT_EMAIL]** to see or
+advertising. A parent or guardian can email us at **farhan@learnzuno.in** to see or
 delete their child's data.
 
 ## 7. How we protect your data
@@ -89,4 +89,4 @@ will change, and big changes will be shown in the app.
 ## 10. Contact
 
 Questions about your privacy, or want your data deleted? Email us at
-**[SUPPORT_EMAIL]**.
+**farhan@learnzuno.in**.
