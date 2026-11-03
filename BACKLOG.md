@@ -254,6 +254,18 @@ not `localhost` (the same `::1` trap that showed the frontend as `unhealthy` on
 ship `curl` / `wget`.
 **Stage 2.**
 
+### O18. Stronger OAuth signup consent — one-time consent screen for new accounts
+A brand-new account can be created straight from Google on **either** the Register
+or the Login page (signup is not a required first step). Today (ADR-013, "Option A"):
+the Google button carries a **visible notice** under it on both pages, while the
+email form uses an explicit **checkbox**. The stronger mechanism is a **one-time
+consent screen** shown right after a brand-new user's first Google sign-in (detected
+server-side), blocking app entry until they accept — explicit consent bound to the
+account-creation event, covering every entry point, never shown to returning users.
+**Needs:** a server-side "new account / consent pending" signal + a consent gate in
+`AuthCallback.jsx` + an accept endpoint. Update ADR-013 when built.
+**Stage 2 — with the planned Register/Login redesign.**
+
 ---
 
 ## AI Track — Python retrieval service

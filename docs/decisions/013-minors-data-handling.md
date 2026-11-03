@@ -2,6 +2,7 @@
 
 - **Date:** 2026-11-02
 - **Status:** Accepted
+- **Amended:** 2026-11-03 — OAuth (Google) sign-in consent clarified (Decision §3)
 
 ## Context
 
@@ -55,6 +56,16 @@ age-verification:
    - **Guests:** covered by the same policy; consent via a **visible notice** near
      the entry / ask bar (*"By using Zuno you agree to our Terms & Privacy
      Policy"*, with links), since a guest never reaches the signup checkbox.
+   - **Google / OAuth sign-in (amended 2026-11-03):** a brand-new account can be
+     created straight from Google on **either** the Register **or** the Login page
+     — signup is not a required first step. A blocking checkbox cannot sit on the
+     returning-user login path, so the Google button carries the same **visible
+     notice** (*"Google se continue karke tum Terms & Privacy se agree karte ho"*)
+     on **both** pages, consistent with the guest notice. The required checkbox
+     applies to the **email form** only. A stronger explicit one-time consent
+     screen for brand-new accounts (shown right after their first Google sign-in)
+     is the better long-term mechanism — deferred to the Register/Login redesign
+     (`BACKLOG.md` O18).
 4. **Third-party disclosure.** The policy names every processor that sees student
    data: **OpenAI** (answers), **Google** (OAuth login + Gemini embedding
    fallback), **MongoDB Atlas** (storage), the **email sender** (verification /
