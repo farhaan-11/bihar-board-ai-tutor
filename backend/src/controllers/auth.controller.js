@@ -9,6 +9,7 @@ import { sendVerificationEmail, sendPasswordResetEmail } from '../auth/emailHelp
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../auth/tokenHelpers.js';
 import { generateGuestToken, verifyGuestToken } from '../auth/guestTokenHelpers.js';
 import { claimGuestData } from '../services/chapterProgress.service.js';
+import { getAppBaseUrl } from '../utils/appUrl.js';
 
 // Simple email format check — not too strict, just catches obvious mistakes
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -506,9 +507,10 @@ export const getMe = async (req, res) => {
  * issues tokens, and redirects to the frontend with the access token.
  */
 export const googleCallback = async (req, res) => {
-  // FRONTEND_URL might be a comma-separated list. We take the first one for the redirect.
-  // E.g. "https://bihar-board-ai-tutor.vercel.app,http://localhost:5173" -> "https://bihar-board-ai-tutor.vercel.app"
-  const FRONTEND_URL = (process.env.FRONTEND_URL || 'http://localhost:5173').split(',')[0].trim();
+  // Single frontend origin to send the user back to after OAuth. Resolved from
+  // APP_BASE_URL (falls back to FRONTEND_URL's first entry) — see utils/appUrl.js.
+  // FRONTEND_URL stays the CORS allow-list; the OAuth redirect needs ONE origin.
+  const FRONTEND_URL = getAppBaseUrl();
 
   try {
     // 1. Check code exists
