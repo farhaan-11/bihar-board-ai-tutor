@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { getAppBaseUrl } from '../utils/appUrl.js';
 
 // The transporter is created lazily (on first use) so that process.env values
 // are read AFTER dotenv has loaded the .env file. If the transporter were created
@@ -51,7 +52,7 @@ export const connectMailer = async () => {
  * @param {string} token - Random verification token (hex string)
  */
 export const sendVerificationEmail = async (to, token) => {
-  const verifyUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+  const verifyUrl = `${getAppBaseUrl()}/verify-email?token=${token}`;
 
   // ===========================================================================
   // [PRIMARY MODE: BREVO HTTP API (Port 443 HTTPS)]
@@ -131,7 +132,7 @@ export const sendVerificationEmail = async (to, token) => {
  * @param {string} token - Random reset token (hex string)
  */
 export const sendPasswordResetEmail = async (to, token) => {
-  const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+  const resetUrl = `${getAppBaseUrl()}/reset-password?token=${token}`;
 
   // ===========================================================================
   // [PRIMARY MODE: BREVO HTTP API (Port 443 HTTPS)]
