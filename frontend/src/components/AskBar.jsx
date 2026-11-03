@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded';
 import LockOutlined from '@mui/icons-material/LockOutlined';
 import StopRounded from '@mui/icons-material/StopRounded';
@@ -9,7 +10,7 @@ import Paper from '@mui/material/Paper';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
-function AskBar({ disabled, isHistoryLoading, isLocked, isGuestLimited, onGuestLimitClick, onAsk, onCancel, studyMode, showHint = true }) {
+function AskBar({ disabled, isHistoryLoading, isLocked, isGuestLimited, onGuestLimitClick, onAsk, onCancel, studyMode, showHint = true, isGuest = false }) {
   const [question, setQuestion] = useState('');
   const [cancelCooling, setCancelCooling] = useState(false);
 
@@ -151,6 +152,16 @@ function AskBar({ disabled, isHistoryLoading, isLocked, isGuestLimited, onGuestL
       {showHint && (
         <div className="ask-hint">
           Zuno sirf Bihar Board Class 10  syllabus se jawab deta hai
+        </div>
+      )}
+      {/* Guest consent — guests never reach the signup checkbox (ADR-013 visible notice) */}
+      {isGuest && showHint && (
+        <div className="ask-hint" style={{ marginTop: 4 }}>
+          Zuno use karke tum{' '}
+          <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Terms</Link>
+          {' '}&{' '}
+          <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Privacy</Link>
+          {' '}se agree karte ho
         </div>
       )}
     </Box>

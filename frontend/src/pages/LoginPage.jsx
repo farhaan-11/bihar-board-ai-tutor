@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
@@ -264,6 +264,15 @@ function LoginPage() {
             {GOOGLE_G}
             Continue with Google
           </button>
+
+          {/* Google login can create a new account, so consent is shown here too (ADR-013 visible-notice pattern) */}
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+            Google se continue karke tum{' '}
+            <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Terms</Link>
+            {' '}&{' '}
+            <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Privacy</Link>
+            {' '}se agree karte ho
+          </p>
 
           <div className="auth-bottom-link">
             Don't have an account?{' '}

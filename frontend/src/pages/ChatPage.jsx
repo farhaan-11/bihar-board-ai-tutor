@@ -1002,6 +1002,7 @@ function ChatPage({ theme, toggleTheme }) {
               onCancel={handleCancel}
               studyMode={studyMode}
               showHint={messages.length === 0}
+              isGuest={!isLoggedIn}
             />
           </Box>
         </Box>

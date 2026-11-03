@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
+import Checkbox from '@mui/material/Checkbox';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
@@ -102,11 +103,12 @@ function RegisterPage() {
   const [errors, setErrors] = useState({ name: '', email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const strength = password ? getPasswordStrength(password) : null;
   const hasErrors = !!(errors.name || errors.email || errors.password);
   const hasEmpty = !name.trim() || !email.trim() || !password;
-  const isDisabled = hasErrors || hasEmpty || loading;
+  const isDisabled = hasErrors || hasEmpty || loading || !agreed;
 
   function handleBlurName() {
     setErrors(e => ({ ...e, name: validateName(name) }));
@@ -285,6 +287,24 @@ function RegisterPage() {
               </div>
             </div>
 
+            {/* Consent — ADR-013: one required checkbox gates signup; age/parent clause lives inside Terms */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 16 }}>
+              <Checkbox
+                id="agree-terms"
+                checked={agreed}
+                onChange={e => setAgreed(e.target.checked)}
+                size="small"
+                sx={{ p: 0, mt: '1px', color: 'var(--border-strong)', '&.Mui-checked': { color: 'var(--primary)' } }}
+              />
+              <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Main{' '}
+                <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Terms of Use</Link>
+                {' '}aur{' '}
+                <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Privacy Policy</Link>
+                {' '}se agree karta hoon
+              </span>
+            </div>
+
             <Button
               type="submit"
               variant="contained"
@@ -322,6 +342,16 @@ function RegisterPage() {
             {GOOGLE_G}
             Continue with Google
           </button>
+
+          {/* Google can create a new account from here or from Login, so it carries the
+              same visible consent notice (ADR-013). The checkbox above gates the email form. */}
+          <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+            Google se continue karke tum{' '}
+            <Link to="/terms" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Terms</Link>
+            {' '}&{' '}
+            <Link to="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>Privacy</Link>
+            {' '}se agree karte ho
+          </p>
 
           <div className="auth-bottom-link">
             Already have an account?{' '}

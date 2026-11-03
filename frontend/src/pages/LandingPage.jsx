@@ -1,6 +1,6 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import BoltRounded from '@mui/icons-material/BoltRounded';
 import LoginRounded from '@mui/icons-material/LoginRounded';
 import VisibilityRounded from '@mui/icons-material/VisibilityRounded';
@@ -88,6 +88,13 @@ function LandingPage() {
           <span>Bilkul free</span>
           <span className="landing-trust-sep">·</span>
           <span>Instant access</span>
+        </div>
+
+        {/* Legal links — F1/F2: Privacy + Terms reachable from the public home */}
+        <div style={{ marginTop: 18, display: 'flex', gap: 10, alignItems: 'center', fontSize: 11.5 }}>
+          <Link to="/privacy" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Privacy Policy</Link>
+          <span style={{ color: 'var(--border-strong)' }}>·</span>
+          <Link to="/terms" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Terms of Use</Link>
         </div>
 
       </div>

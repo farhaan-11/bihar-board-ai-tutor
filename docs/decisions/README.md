@@ -45,3 +45,4 @@ accepted — supersede it with a new ADR and mark the old one `Superseded by ADR
 | [010](010-freeze-quiz-bulk-branch.md) | Freeze `quiz-phase0.5-bulk`, do not merge — its output already reached `main` | Accepted |
 | [011](011-decider-structured-output.md) | Decider LLM uses structured output; parse-error fallback removed (fixes BUG-1/BUG-2) | Accepted |
 | [012](012-server-side-guest-identity.md) | Guest identity is a server-signed token in the X-Guest-Id header (not a client UUID, not a cookie) | Accepted |
+| [013](013-minors-data-handling.md) | Minors' data: one policy for all, consent at point of entry, reasonable-effort baseline (not full DPDP age-verification) | Accepted |

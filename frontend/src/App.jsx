@@ -16,6 +16,8 @@ const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage.jsx'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage.jsx'));
 const SupportPage = lazy(() => import('./pages/SupportPage.jsx'));
 const QuizPage = lazy(() => import('./pages/QuizPage.jsx'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage.jsx'));
+const TermsOfUsePage = lazy(() => import('./pages/TermsOfUsePage.jsx'));
 
 function App() {
   // Theme state lives here so all pages (Chat, Login, Register) share it
@@ -59,6 +61,10 @@ function App() {
 
         {/* Practice Quiz Hub — accessible to everyone (guest + logged in) */}
         <Route path="/quiz" element={<QuizPage />} />
+
+        {/* Legal pages — public, readable by guests and logged-in users alike */}
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsOfUsePage />} />
 
         {/* Auth pages */}
         <Route path="/login" element={<GuestOnlyRoute><LoginPage theme={theme} toggleTheme={toggleTheme} /></GuestOnlyRoute>} />
