@@ -260,7 +260,12 @@ No fix is marked done on assertion alone.
       String in 6 collections but as an ObjectId in `support_requests` (keyed by
       email there); a one-time read-only type probe confirms this before the first
       real deletion. Self-serve "Delete my account" button parked in `BACKLOG.md`.
-- [ ] **F5.** Google OAuth consent screen reviewed — scopes minimal, app name/logo correct
+- [x] **F5.** Google OAuth consent screen reviewed — scopes minimal, app name/logo correct
+      — Reviewed 2026-11-03 (owner, Google Cloud console). App name **ZUNO**, support
+      email `farhan@learnzuno.in`. Scopes minimal — only name + email
+      (`userinfo.profile`, `userinfo.email`, `openid`); no Drive/Gmail/other. App is
+      **In production** and real students sign in with **no "unverified app" warning**,
+      which confirms the scopes are non-sensitive. Section F complete.
 
 ---
 
