@@ -5,7 +5,10 @@
 > Last verified: §1–§7 as of 2026-08-28 (verified against `main`, not from memory).
 > **§8 added 2026-10-26** — covers everything since 2026-09-10 (Python retriever,
 > Docker, EC2). Re-verify §1–§7 before relying on them.
-> **Latest merges to `main`:** `2e7e611` + `dd190e3` (2026-11-02) Stage 1 D — fixed
+> **Latest merge to `main`:** `8ef3d4b` (2026-11-03) — Stage 1 **Section F** (legal &
+> student safety): privacy + terms pages live, signup/guest consent, ADR-013 (minors
+> data), deletion runbook; F1–F5 all done (F5 OAuth-console review 2026-11-03).
+> **Prior:** `2e7e611` + `dd190e3` (2026-11-02) Stage 1 D — fixed
 > the two broken test commands (`test:golden` now fail-able; `test:chat-db-models`
 > rewritten for embedded chatState). See §5. Earlier (re-verified 2026-10-27 from
 > `git log`): `6e65cb5`
@@ -267,7 +270,7 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 | C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b) parked in `BACKLOG.md` R6. |
 | D — Testing | In progress. D5 ✅ (baseline suite, incl. the now-fixed `test:chat-db-models`); `test:golden` runner made fail-able + D3 decision recorded (2026-11-02). Remaining: D1 (EXAM_INFO/EMOTIONAL_SUPPORT cases), D2 (multi-turn), D4 (full 42-case golden run green). |
 | E — Real students | Not started. |
-| F — Legal & student safety | Not started. |
+| F — Legal & student safety | ✅ **Complete.** F1–F5 done; Section F code merged to `main` 2026-11-03 (`8ef3d4b`). Privacy + terms pages live, signup/guest consent, ADR-013 (minors data), deletion runbook (`docs/legal/DATA_DELETION_RUNBOOK.md`), Google OAuth consent screen reviewed (name/email scopes only, in production). |
 | G — Operations | ✅ **5/5.** G1 (spend cap) + G3 (`docs/ROLLBACK.md`) done 2026-10-27; G2 (Atlas backup), G4 (usage script), G5 (support inbox) owner-reported done 2026-10-29. |
 
 **Next task:** Section D (testing) in progress — both previously-broken test
