@@ -246,7 +246,14 @@ No fix is marked done on assertion alone.
 - [ ] **F2.** Terms of use page published
 - [ ] **F3.** Decision recorded (as an ADR) on how minors' data is handled —
       parental consent, data retention period, deletion request path
-- [ ] **F4.** Account/data deletion path exists (even if manual via support email)
+- [x] **F4.** Account/data deletion path exists (even if manual via support email)
+      — manual, operator-run via support email. Procedure:
+      `docs/legal/DATA_DELETION_RUNBOOK.md` (email → user lookup → delete across all
+      8 student-data collections, with a count-before and a re-count-after — every
+      count must read 0 — as the completeness guarantee). `userId` is stored as a
+      String in 6 collections but as an ObjectId in `support_requests` (keyed by
+      email there); a one-time read-only type probe confirms this before the first
+      real deletion. Self-serve "Delete my account" button parked in `BACKLOG.md`.
 - [ ] **F5.** Google OAuth consent screen reviewed — scopes minimal, app name/logo correct
 
 ---
