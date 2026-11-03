@@ -242,10 +242,16 @@ No fix is marked done on assertion alone.
 > This is not legal advice. It is a flag that this needs a decision before a
 > public launch, not after.
 
-- [ ] **F1.** Privacy policy page published, linked from footer and signup
-- [ ] **F2.** Terms of use page published
-- [ ] **F3.** Decision recorded (as an ADR) on how minors' data is handled —
+- [x] **F1.** Privacy policy page published, linked from footer and signup
+      — `/privacy` page + route (Phase C), linked from the landing footer and from
+      the signup + guest consent notices. Owner walkthrough-verified 2026-11-03.
+- [x] **F2.** Terms of use page published
+      — `/terms` page + route (Phase C), linked alongside the privacy link. Owner
+      walkthrough-verified 2026-11-03.
+- [x] **F3.** Decision recorded (as an ADR) on how minors' data is handled —
       parental consent, data retention period, deletion request path
+      — `docs/decisions/013-minors-data-handling.md` (ADR-013), amended 2026-11-03
+      for the Option A Google sign-in consent design.
 - [x] **F4.** Account/data deletion path exists (even if manual via support email)
       — manual, operator-run via support email. Procedure:
       `docs/legal/DATA_DELETION_RUNBOOK.md` (email → user lookup → delete across all
