@@ -205,7 +205,18 @@ No fix is marked done on assertion alone.
 ## D. Testing
 
 - [ ] **D1.** Golden set covers all 9 intents — `EXAM_INFO` and `EMOTIONAL_SUPPORT` currently have **zero** cases
-- [ ] **D2.** At least 5 multi-turn cases (currently zero) — the pipeline is stateful and nothing tests state
+- [x] **D2.** At least 5 multi-turn cases — **done (2026-11-04).** 5 cases (M1–M5) in
+      `backend/test/golden-queries.json`, and `run-golden-set.js` now runs a case's
+      `turns` array as one conversation over a single shared sessionId (step2 loads
+      session + history by sessionId, step7 upserts by sessionId — so guest memory
+      carries across turns with no login/token needed). Single-turn cases unchanged;
+      added a shared `evaluateResponse()` and "setup turn" support (a turn with no
+      `expectedIntent` advances state without being judged on intent). M1/M3/M4
+      re-explain + English re-explain → EXPLAIN_MORE with real prior context (the
+      proper multi-turn coverage the single-turn E03 fresh-session known-fail points
+      to); M2 pronoun "iska" resolves to the prior topic (not GREETING); M5 drives the
+      drift counter past `MAX_NON_ACADEMIC_TURNS` (10) so turn 11 flips to DRIFT_CAP.
+      Verified live: `npm run test:golden -- --category=MULTI_TURN` → 5/5 CLEAN.
 - [x] **D3.** The golden run can now actually **fail** (exit non-zero) — on any intent
       mismatch, HTTP/timeout error, provider rate-limit, or a zero-query run
       (`run-golden-set.js`, merged 2026-11-02). *Decision (2026-11-02):* quality
@@ -213,8 +224,9 @@ No fix is marked done on assertion alone.
       hard-failing on keywords would make the suite flaky. So "fail the run" = fail on
       intent/error, warn on quality.
 - [ ] **D4.** `npm run test:golden` passes 100% on `main` — the runner is now trustworthy
-      (it can fail), but the full 42-case run has not been done green yet; only a GREETING
-      subset (7 cases, all intents correct) has been run.
+      (it can fail), but the full 67-case run has not been done green yet; so far a GREETING
+      subset (7 cases, all intents correct) and the MULTI_TURN subset (5 cases, 2026-11-04)
+      have each run all-green.
 - [x] **D5.** Baseline test suite passes: `test:chunks`, `test:study-map`,
       `test:curriculum-resolvers`, `test:chat-db-models`. The last was broken (it imported
       the deleted `chatState.model.js`); rewritten for the embedded-chatState API and

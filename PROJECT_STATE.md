@@ -206,9 +206,9 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 
 | What | State |
 |---|---|
-| Golden set | **42 cases** in `backend/test/golden-queries.json` |
-| Intents covered | GREETING 8, CONCEPT_QUESTION 13, OUT_OF_CONTEXT 6, EXPLAIN_MORE 5, NEXT_STEP 4, CHOOSE_COURSE 4, UNSAFE_OR_ABUSIVE 2 |
-| **Not covered** | `EXAM_INFO` (0), `EMOTIONAL_SUPPORT` (0), multi-turn (0) |
+| Golden set | **67 cases** in `backend/test/golden-queries.json` (62 single-turn + 5 multi-turn) |
+| Intents covered | All 9 intents — incl. `EXAM_INFO` (EX01–03) and `EMOTIONAL_SUPPORT` (ES01–03), plus 14 messy real-input cases (R01–R14) and 5 blind-spot cases (BS01–05) |
+| Multi-turn | **5 cases** (M1–M5): EXPLAIN_MORE / pronoun / expand after a concept turn, and an 11-turn drift-cap sequence — added 2026-11-04 (D2) |
 | Quality checks | Substring matching only — **warns, never fails** |
 
 Other test scripts: `test:chunks`, `test:study-map`, `test:curriculum-resolvers`,
@@ -268,15 +268,15 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 | A — Repository hygiene | ✅ 5/5 |
 | B — Infrastructure | I2, I3 ✅ verified. I1 (Render paid), I4 (error monitoring), I5 (Redis paid) **deferred by owner** with accepted-risk notes in `STAGE1_DONE.md`. |
 | C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b) parked in `BACKLOG.md` R6. |
-| D — Testing | In progress. D5 ✅ (baseline suite, incl. the now-fixed `test:chat-db-models`); `test:golden` runner made fail-able + D3 decision recorded (2026-11-02). Remaining: D1 (EXAM_INFO/EMOTIONAL_SUPPORT cases), D2 (multi-turn), D4 (full 42-case golden run green). |
+| D — Testing | In progress. D5 ✅, D3 ✅ (runner made fail-able, 2026-11-02). D1 cases present (EXAM_INFO EX01–03, EMOTIONAL_SUPPORT ES01–03). **D2 ✅** (5 multi-turn cases M1–M5 + runner multi-turn support, verified live 2026-11-04). Remaining: D4 (full 67-case golden run green). |
 | E — Real students | Not started. |
 | F — Legal & student safety | ✅ **Complete.** F1–F5 done; Section F code merged to `main` 2026-11-03 (`8ef3d4b`). Privacy + terms pages live, signup/guest consent, ADR-013 (minors data), deletion runbook (`docs/legal/DATA_DELETION_RUNBOOK.md`), Google OAuth consent screen reviewed (name/email scopes only, in production). |
 | G — Operations | ✅ **5/5.** G1 (spend cap) + G3 (`docs/ROLLBACK.md`) done 2026-10-27; G2 (Atlas backup), G4 (usage script), G5 (support inbox) owner-reported done 2026-10-29. |
 
 **Next task:** Section D (testing) in progress — both previously-broken test
 commands (`test:chat-db-models`, `test:golden`) fixed and merged 2026-11-02; D5
-done. Remaining D: D1 (golden cases for EXAM_INFO/EMOTIONAL_SUPPORT), D2
-(multi-turn), D4 (full 42-case golden run green). **Before any single-classroom /
+done; D2 done 2026-11-04 (multi-turn cases + runner support); D1 cases present.
+Remaining D: D4 (full 67-case golden run green). **Before any single-classroom /
 school-wifi onboarding:** fix `globalApiLimiter` (BACKLOG R6 / BUG-8b) — same
 raw-IP cause, must not be patched by raising the number.
 
