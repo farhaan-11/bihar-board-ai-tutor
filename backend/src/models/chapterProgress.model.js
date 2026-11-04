@@ -73,16 +73,25 @@ const chapterProgressSchema = new mongoose.Schema(
 
 // ─── Indexes ─────────────────────────────────────────────────────────────────
 
-// PRIMARY: one document per logged-in user + chapter (unique enforced at DB level)
-// partialFilterExpression ensures this index ONLY covers docs where userId is a
-// real ObjectId. Guest docs (no userId field) are never indexed here, so different
-// guests on the same chapter never cause dup-key conflicts.
+// PRIMARY: one document per logged-in user + chapter (unique enforced at DB level).
+// userId is stored as a STRING, not an ObjectId: the controller passes req.user.id
+// (Mongoose's `.id` virtual returns _id.toString()) and this schema types userId as
+// String, so Mongo stores the string form. The partialFilterExpression must therefore
+// match $type:'string' — exactly like guest_chapter_unique below. It still excludes
+// guest docs (userId is absent/null there), so guests never collide on this index.
+//
+// (Until 2026-11-04 this filtered $type:'objectId', which matched ZERO documents — so
+// the unique constraint silently enforced nothing for logged-in users, risking
+// duplicate per-user-per-chapter docs under concurrent writes. The twin guest index
+// hit the same class of bug in 2026-07 and was fixed first; this one was missed.
+// scripts/fix-chapter-progress-user-index.js is the one-time migration that drops the
+// old objectId-filtered index on existing databases and rebuilds it correctly.)
 chapterProgressSchema.index(
   { userId: 1, chapterId: 1 },
   {
     unique: true,
     name: 'user_chapter_unique',
-    partialFilterExpression: { userId: { $type: 'objectId' } },
+    partialFilterExpression: { userId: { $type: 'string' } },
   }
 );
 
