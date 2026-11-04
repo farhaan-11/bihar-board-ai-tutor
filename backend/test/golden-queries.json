@@ -633,5 +633,65 @@
     "expectedResponseMode": "study_tutor",
     "qualityChecks": [],
     "note": "Greeting + misspelled academic — must be CONCEPT, not GREETING (blind-spot + messy)"
+  },
+
+  {
+    "id": "M1",
+    "category": "MULTI_TURN",
+    "studyMode": "global",
+    "note": "EXPLAIN_MORE only applies to Zuno's PREVIOUS reply (deciderPrompt rule 4). In a fresh session 'dobara samjhao' correctly falls back to GREETING (see single-turn E03). Here turn 1 gives it a real prior CONCEPT_QUESTION turn in the SAME session, so turn 2 must classify EXPLAIN_MORE. This is the multi-turn coverage E03's note points to (Stage 1 D2).",
+    "turns": [
+      { "query": "Photosynthesis kya hai?", "expectedIntent": "CONCEPT_QUESTION" },
+      { "query": "Dobara samjhao please", "expectedIntent": "EXPLAIN_MORE" }
+    ]
+  },
+  {
+    "id": "M2",
+    "category": "MULTI_TURN",
+    "studyMode": "global",
+    "note": "Pronoun resolution. 'Iska' has no referent in a fresh session (single-turn BS04 correctly falls back to GREETING). With a real prior topic in the same session, 'iska matlab kya hai' must resolve to that topic and NOT be GREETING. Expected EXPLAIN_MORE (re-explain the prior concept); CONCEPT_QUESTION would also be context-resolved — confirm the actual value on the live run and lock it.",
+    "turns": [
+      { "query": "Refraction kya hota hai light ka?", "expectedIntent": "CONCEPT_QUESTION" },
+      { "query": "Iska matlab kya hai?", "expectedIntent": "EXPLAIN_MORE" }
+    ]
+  },
+  {
+    "id": "M3",
+    "category": "MULTI_TURN",
+    "studyMode": "global",
+    "note": "'Aur detail me batao' is an expand request — only meaningful against a prior explanation. Turn 2 must carry turn 1's topic and classify EXPLAIN_MORE.",
+    "turns": [
+      { "query": "Electric current kaise flow karta hai?", "expectedIntent": "CONCEPT_QUESTION" },
+      { "query": "Aur detail me batao", "expectedIntent": "EXPLAIN_MORE" }
+    ]
+  },
+  {
+    "id": "M4",
+    "category": "MULTI_TURN",
+    "studyMode": "global",
+    "note": "English re-explain after a concept turn, in the same session — covers the single-turn E05 scenario with real prior context.",
+    "turns": [
+      { "query": "Acid aur base mein kya fark hai?", "expectedIntent": "CONCEPT_QUESTION" },
+      { "query": "I didn't understand, please explain again", "expectedIntent": "EXPLAIN_MORE" }
+    ]
+  },
+  {
+    "id": "M5",
+    "category": "MULTI_TURN",
+    "studyMode": "global",
+    "note": "Session drift cap. askOrchestrator hard-blocks GREETING/OUT_OF_CONTEXT once totalNonAcademicTurns >= MAX_NON_ACADEMIC_TURNS (default 10), overriding decision.intent to DRIFT_CAP. The first 10 turns are SETUP (no expectedIntent — not judged on intent, only used to drive the drift counter up); each is clearly off-topic so it increments the counter. On turn 11 the counter has reached 10 (>= cap) so the turn is overridden to DRIFT_CAP. ASSUMES the server's MAX_NON_ACADEMIC_TURNS is the default 10 — if that env differs, adjust the number of setup turns. Slow case (~11 /ask calls).",
+    "turns": [
+      { "query": "IPL ki team batao" },
+      { "query": "Biryani kaise banate hain?" },
+      { "query": "Bollywood mein kaun achha actor hai?" },
+      { "query": "Aaj mausam kaisa hai?" },
+      { "query": "Cricket ka score kya hua?" },
+      { "query": "Instagram reels kaise viral hote hain?" },
+      { "query": "Train ka time kya hai?" },
+      { "query": "Naya phone kaunsa lu?" },
+      { "query": "Koi achha gaana suggest karo" },
+      { "query": "Virat Kohli ki age kya hai?" },
+      { "query": "Chalo movie dekhte hain", "expectedIntent": "DRIFT_CAP" }
+    ]
   }
 ]

@@ -78,14 +78,16 @@ const parseSSEStream = async (res) => {
 };
 
 // ── HTTP helper ───────────────────────────────────────────────────────────────
-const askQuestion = async (query) => {
-  const body = {
-    question:  query.query,
-    studyMode: query.studyMode,
-    sessionId: randomUUID(), // fresh session per query — no state bleed
-  };
+// One /ask call. The sessionId is passed in explicitly by the caller:
+//   • single-turn cases → a fresh randomUUID per call (no state bleed, as before)
+//   • multi-turn cases  → the SAME sessionId for every turn, so the server loads
+//     the prior turn's chatState + history. step2.loadSession keys off sessionId
+//     and step7 upserts by sessionId, so no login / guest token is needed for the
+//     conversation memory to carry across turns.
+const callAsk = async ({ question, studyMode, chapterId, sessionId }) => {
+  const body = { question, studyMode, sessionId };
 
-  if (query.chapterId) body.chapterId = query.chapterId;
+  if (chapterId) body.chapterId = chapterId;
 
   const controller = new AbortController();
   const timeout    = setTimeout(() => controller.abort(), 30_000); // 30 second timeout
@@ -123,6 +125,53 @@ const checkQuality = (response, checks) => {
   const answerText = (response.answer || '').toLowerCase();
   const failed = checks.filter(kw => !answerText.includes(kw.toLowerCase()));
   return { passed: failed.length === 0, failed };
+};
+
+// ── Evaluate one /ask response against an expected intent ──────────────────────
+// Returns the same outcome vocabulary used everywhere else: ERROR / SKIP / FAIL /
+// WARN / PASS. Shared by both the single-turn and multi-turn paths so one call is
+// judged identically no matter which path sent it.
+const evaluateResponse = (response, { expectedIntent, qualityChecks }) => {
+  if (response.error) {
+    return { outcome: 'ERROR', actualIntent: null, error: response.error };
+  }
+
+  // API wraps the response in { success, message, data: {...} }
+  const payload = response.data ?? response;
+
+  // Provider error (rate limit, auth, network) — no decision field available
+  if (payload.status === 'provider_error') {
+    return { outcome: 'SKIP', actualIntent: 'PROVIDER_ERROR', error: payload.answer || 'provider_error' };
+  }
+
+  const actualIntent = payload.decision?.intent ?? 'UNKNOWN';
+
+  // Setup turn (multi-turn only): a turn with no expectedIntent exists purely to
+  // advance conversation state (e.g. driving the drift counter up before the turn
+  // that actually matters). It is not judged on intent — only a hard ERROR/SKIP
+  // (handled above) can fail it.
+  if (expectedIntent == null) {
+    return { outcome: 'PASS', actualIntent, setup: true };
+  }
+
+  const intentMatch  = actualIntent === expectedIntent;
+  const quality      = checkQuality(payload, qualityChecks);
+
+  let outcome;
+  if (!intentMatch) outcome = 'FAIL';
+  else if (!quality.passed) outcome = 'WARN';
+  else outcome = 'PASS';
+
+  return {
+    outcome,
+    actualIntent,
+    actualResponseMode: payload.responseMode,
+    intentMatch,
+    qualityPassed: quality.passed,
+    qualityFailed: quality.failed,
+    answerSnippet: (payload.answer || '').slice(0, 150),
+    tokenUsage:    payload.decision?.tokenUsage ?? 0,
+  };
 };
 
 // ── Main runner ───────────────────────────────────────────────────────────────
@@ -168,72 +217,137 @@ const run = async () => {
   let errored = 0;         // HTTP / timeout / crash — server-side problem
   let providerErrors = 0;  // OpenAI rate-limit / down — code bug nahi, run adhoora (rerun)
 
+  // 5 second delay between every /ask call — Groq free-tier rate-limit safety.
+  const SLEEP = () => new Promise(r => setTimeout(r, 5000));
+
+  // Fold one case's final outcome into the shared counters.
+  const tally = (outcome) => {
+    if (outcome === 'ERROR') errored++;
+    else if (outcome === 'SKIP') providerErrors++;
+    else if (outcome === 'FAIL') failedIntent++;
+    else if (outcome === 'WARN') warned++;
+    else passed++;
+  };
+
+  // A multi-turn case's outcome = its worst turn (ERROR > SKIP > FAIL > WARN > PASS).
+  const RANK = { PASS: 0, WARN: 1, FAIL: 2, SKIP: 3, ERROR: 4 };
+  const colourFor = (outcome) =>
+    outcome === 'PASS' ? GREEN(outcome)
+    : outcome === 'WARN' || outcome === 'SKIP' ? YELLOW(outcome)
+    : RED(outcome);
+
   for (const query of queries) {
+    // ── Multi-turn case: a sequence of turns sharing ONE sessionId ──────────
+    // Shape: { id, category, studyMode?, chapterId?, note?, turns: [ { query,
+    // expectedIntent, studyMode?, chapterId?, qualityChecks? }, ... ] }
+    if (Array.isArray(query.turns)) {
+      const sessionId = randomUUID(); // one conversation = one session
+      console.log(`[${query.id}] ${query.category.padEnd(20)} (multi-turn, ${query.turns.length} turns)`);
+
+      const turnResults = [];
+      let caseOutcome = 'PASS';
+
+      for (let i = 0; i < query.turns.length; i++) {
+        const turn = query.turns[i];
+        const response = await callAsk({
+          question:  turn.query,
+          studyMode: turn.studyMode ?? query.studyMode,
+          chapterId: turn.chapterId ?? query.chapterId,
+          sessionId,
+        });
+        const ev = evaluateResponse(response, {
+          expectedIntent: turn.expectedIntent,
+          qualityChecks:  turn.qualityChecks,
+        });
+
+        const detail =
+          ev.setup ? ` (setup: ${ev.actualIntent})`
+          : ev.outcome === 'FAIL' ? ` (got ${ev.actualIntent}, expected ${turn.expectedIntent})`
+          : ev.outcome === 'PASS' || ev.outcome === 'WARN' ? ` (${ev.actualIntent})`
+          : ev.error ? ` (${ev.error})` : '';
+        console.log(`   turn ${i + 1}: "${turn.query.slice(0, 40).padEnd(40)}" → ${colourFor(ev.outcome)}${detail}`);
+
+        turnResults.push({
+          turn:           i + 1,
+          query:          turn.query,
+          expectedIntent: turn.expectedIntent,
+          actualIntent:   ev.actualIntent,
+          outcome:        ev.outcome,
+          qualityFailed:  ev.qualityFailed,
+          error:          ev.error,
+        });
+        if (RANK[ev.outcome] > RANK[caseOutcome]) caseOutcome = ev.outcome;
+
+        await SLEEP(); // between turns too — same conversation, same rate limit
+      }
+
+      results.push({
+        id:        query.id,
+        category:  query.category,
+        query:     `(multi-turn: ${query.turns.map(t => t.query).join(' | ')})`,
+        note:      query.note,
+        outcome:   caseOutcome,
+        multiTurn: true,
+        turns:     turnResults,
+        timestamp: new Date().toISOString(),
+      });
+      tally(caseOutcome);
+      continue;
+    }
+
+    // ── Single-turn case (unchanged behaviour) ──────────────────────────────
     process.stdout.write(`[${query.id}] ${query.category.padEnd(20)} "${query.query.slice(0, 40).padEnd(40)}" → `);
 
-    const response = await askQuestion(query);
+    const response = await callAsk({
+      question:  query.query,
+      studyMode: query.studyMode,
+      chapterId: query.chapterId,
+      sessionId: randomUUID(), // fresh session per query — no state bleed
+    });
+    const ev = evaluateResponse(response, {
+      expectedIntent: query.expectedIntent,
+      qualityChecks:  query.qualityChecks,
+    });
 
     const result = {
-      id:               query.id,
-      category:         query.category,
-      query:            query.query,
-      studyMode:        query.studyMode,
-      expectedIntent:   query.expectedIntent,
+      id:                   query.id,
+      category:             query.category,
+      query:                query.query,
+      studyMode:            query.studyMode,
+      expectedIntent:       query.expectedIntent,
       expectedResponseMode: query.expectedResponseMode,
-      note:             query.note,
-      timestamp:        new Date().toISOString(),
+      note:                 query.note,
+      timestamp:            new Date().toISOString(),
+      outcome:              ev.outcome,
+      actualIntent:         ev.actualIntent,
     };
 
-    if (response.error) {
-      console.log(RED(`ERROR — ${response.error}`));
-      result.outcome      = 'ERROR';
-      result.actualIntent = null;
-      result.error        = response.error;
-      errored++;
+    if (ev.outcome === 'ERROR') {
+      console.log(RED(`ERROR — ${ev.error}`));
+      result.error = ev.error;
+    } else if (ev.outcome === 'SKIP') {
+      console.log(YELLOW(`SKIP  — provider_error (rate limit / LLM unavailable)`));
+      result.error = ev.error;
     } else {
-      // API wraps response in { success, message, data: {...} }
-      const payload      = response.data ?? response;
+      result.actualResponseMode = ev.actualResponseMode;
+      result.intentMatch        = ev.intentMatch;
+      result.qualityPassed      = ev.qualityPassed;
+      result.qualityFailed      = ev.qualityFailed;
+      result.answerSnippet      = ev.answerSnippet;
+      result.tokenUsage         = ev.tokenUsage;
 
-      // Provider error (rate limit, auth, network) — no decision field available
-      if (payload.status === 'provider_error') {
-        console.log(YELLOW(`SKIP  — provider_error (rate limit / LLM unavailable)`));
-        result.outcome      = 'SKIP';
-        result.actualIntent = 'PROVIDER_ERROR';
-        result.error        = payload.answer || 'provider_error';
-        providerErrors++;
+      if (ev.outcome === 'FAIL') {
+        console.log(RED(`FAIL  — got ${ev.actualIntent} (expected ${query.expectedIntent})`));
+      } else if (ev.outcome === 'WARN') {
+        console.log(YELLOW(`WARN  — intent ✓ but quality checks failed: [${ev.qualityFailed.join(', ')}]`));
       } else {
-        const actualIntent = payload.decision?.intent ?? 'UNKNOWN';
-        const intentMatch  = actualIntent === query.expectedIntent;
-        const quality      = checkQuality(payload, query.qualityChecks);
-
-        result.actualIntent       = actualIntent;
-        result.actualResponseMode = payload.responseMode;
-        result.intentMatch        = intentMatch;
-        result.qualityPassed      = quality.passed;
-        result.qualityFailed      = quality.failed;
-        result.answerSnippet      = (payload.answer || '').slice(0, 150);
-        result.tokenUsage         = payload.decision?.tokenUsage ?? 0;
-
-        if (!intentMatch) {
-          result.outcome = 'FAIL';
-          console.log(RED(`FAIL  — got ${actualIntent} (expected ${query.expectedIntent})`));
-          failedIntent++;
-        } else if (!quality.passed) {
-          result.outcome = 'WARN';
-          console.log(YELLOW(`WARN  — intent ✓ but quality checks failed: [${quality.failed.join(', ')}]`));
-          warned++;
-        } else {
-          result.outcome = 'PASS';
-          console.log(GREEN(`PASS  — ${actualIntent}`));
-          passed++;
-        }
+        console.log(GREEN(`PASS  — ${ev.actualIntent}`));
       }
     }
 
     results.push(result);
-
-    // 5 second delay between calls — Groq free tier rate limit safety
-    await new Promise(r => setTimeout(r, 5000));
+    tally(ev.outcome);
+    await SLEEP();
   }
 
   // ── Summary ────────────────────────────────────────────────────────────────
@@ -288,7 +402,18 @@ const run = async () => {
       else prefix = YELLOW('WARN');
 
       console.log(`  [${r.id}] ${prefix} — "${r.query}"`);
-      if (r.outcome === 'FAIL') {
+      if (r.multiTurn) {
+        // Only the turns that weren't a clean PASS.
+        for (const t of r.turns.filter(t => t.outcome !== 'PASS')) {
+          if (t.outcome === 'FAIL') {
+            console.log(`         turn ${t.turn}: expected ${t.expectedIntent}, got ${t.actualIntent}`);
+          } else if (t.outcome === 'WARN') {
+            console.log(`         turn ${t.turn}: missing quality keywords [${t.qualityFailed?.join(', ')}]`);
+          } else {
+            console.log(`         turn ${t.turn}: ${t.error}`);
+          }
+        }
+      } else if (r.outcome === 'FAIL') {
         console.log(`         Expected: ${r.expectedIntent}  Got: ${r.actualIntent}`);
       } else if (r.outcome === 'WARN') {
         console.log(`         Missing quality keywords: [${r.qualityFailed?.join(', ')}]`);
