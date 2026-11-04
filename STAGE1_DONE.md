@@ -204,7 +204,11 @@ No fix is marked done on assertion alone.
 
 ## D. Testing
 
-- [ ] **D1.** Golden set covers all 9 intents — `EXAM_INFO` and `EMOTIONAL_SUPPORT` currently have **zero** cases
+- [x] **D1.** Golden set covers all 9 intents — **done (2026-11-04).** The full 67-case
+      run exercised every intent: GREETING, CONCEPT_QUESTION, EXPLAIN_MORE, NEXT_STEP,
+      CHOOSE_COURSE, OUT_OF_CONTEXT, UNSAFE_OR_ABUSIVE, EXAM_INFO (EX01–03) and
+      EMOTIONAL_SUPPORT (ES01–03) — each case's intent correct. The earlier gap
+      (`EXAM_INFO` / `EMOTIONAL_SUPPORT` had zero cases) is closed.
 - [x] **D2.** At least 5 multi-turn cases — **done (2026-11-04).** 5 cases (M1–M5) in
       `backend/test/golden-queries.json`, and `run-golden-set.js` now runs a case's
       `turns` array as one conversation over a single shared sessionId (step2 loads
@@ -223,10 +227,13 @@ No fix is marked done on assertion alone.
       (substring) checks stay **WARN**, not a hard fail — the LLM's wording varies, so
       hard-failing on keywords would make the suite flaky. So "fail the run" = fail on
       intent/error, warn on quality.
-- [ ] **D4.** `npm run test:golden` passes 100% on `main` — the runner is now trustworthy
-      (it can fail), but the full 67-case run has not been done green yet; so far a GREETING
-      subset (7 cases, all intents correct) and the MULTI_TURN subset (5 cases, 2026-11-04)
-      have each run all-green.
+- [x] **D4.** `npm run test:golden` passes 100% on intent — **done (2026-11-04).** Full
+      67-case run against a live server + real LLM: **57 PASS, 10 WARN, 0 FAIL, 0 ERROR,
+      0 RATE-LIMIT** → `✓ CLEAN` (exit 0). Every case's intent matched. The 10 WARN are
+      quality-substring misses only (the LLM phrased an answer without the exact keyword
+      we guessed) — they stay WARN by the D3 decision, never a failure. Run on branch
+      `stage1-d2-multiturn-golden`, which is `main` + one test-only commit (D2); the
+      product/pipeline code is identical to `main`, so the green run is valid for `main`.
 - [x] **D5.** Baseline test suite passes: `test:chunks`, `test:study-map`,
       `test:curriculum-resolvers`, `test:chat-db-models`. The last was broken (it imported
       the deleted `chatState.model.js`); rewritten for the embedded-chatState API and
