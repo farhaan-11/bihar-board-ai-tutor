@@ -243,10 +243,20 @@ No fix is marked done on assertion alone.
 
 ## E. Real students
 
-- [ ] **E1.** 10+ real students used Zuno for one week
-- [ ] **E2.** Zero crashes and zero blank/error answers in that week
-- [ ] **E3.** Their actual questions collected and added to the golden set
-- [ ] **E4.** Feedback gathered — what confused them, what they liked
+> **PARKED by owner (2026-11-04) — deliberately deferred for later. NOT a blocker,
+> NOT active work, and NOT an open task to keep surfacing.** The whole section is a
+> real-world pilot (10+ students using Zuno for a week); the owner will run it when
+> ready. Until the owner *explicitly* starts it, treat Section E as settled: do not
+> re-raise it, re-plan it, or flag it as "pending" each session. Stage 1 cannot be
+> formally tagged `v1.0-launch` until the pilot actually runs (exit criteria
+> unchanged) — but that is a known, accepted, owner-owned gap, not something to
+> remind the owner about. The engineering side of Stage 1 is complete; the app is
+> pilot-ready.
+
+- [~] **E1.** 10+ real students used Zuno for one week — **parked (owner-run pilot, later)**
+- [~] **E2.** Zero crashes and zero blank/error answers in that week — **parked**
+- [~] **E3.** Their actual questions collected and added to the golden set — **parked**
+- [~] **E4.** Feedback gathered — what confused them, what they liked — **parked**
 
 ---
 
