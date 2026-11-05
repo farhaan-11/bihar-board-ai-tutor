@@ -11,17 +11,15 @@ import { logContextSizes } from '../utils/tokenLogger.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Phase 3: Maps consecutive non-academic turn count to a drift tier (0/1/2).
-// Tier 0 (0-1): normal response. Tier 1 (2-3): gentle nudge. Tier 2 (4+): firm redirect.
+// How much small talk in a row, turned into how firmly Zuno should push back.
+// 0-1 turns: answer normally. 2-3: a gentle nudge. 4 or more: a firm redirect.
 const getDriftTier = (n) => {
   if (n <= 1) return 0;
   if (n <= 3) return 1;
   return 2;
 };
 
-/**
- * Focus mode constraints details mapping logic template generator.
- */
+// The one line that tells the LLM which chapter the student is sitting in.
 const buildFocusChapterPrompt = (focusChapter) => {
   if (!focusChapter) {
     return 'No focus chapter selected.';
@@ -32,11 +30,9 @@ const buildFocusChapterPrompt = (focusChapter) => {
   return `${subjectName} > ${sectionName} > Adhyaay ${focusChapter.number ?? '?'}: ${chapterName}`;
 };
 
-/**
- * Turns cryptic database IDs (like ch_01, t_02) into readable curriculum titles,
- * so the Decider and Tutor LLM get the student's real context instead of raw IDs.
- */
-const buildSemanticStudyContext = (chatState, studyMap) => {
+// The LLM cannot do anything with an id like ch_01, so I turn the student's saved
+// ids into real chapter and topic names before they go into the prompt.
+const buildStudyContextLine = (chatState, studyMap) => {
   if (!chatState || !chatState.currentChapterId) {
     return 'No active study topic selected. Student is browsing globally or just initiated the conversation.';
   }
@@ -66,39 +62,29 @@ const buildSemanticStudyContext = (chatState, studyMap) => {
   return `Active Subject Group: ${foundSubject} > ${foundSection} | Active Textbook Chapter: ${foundChapter} | Active Progress Topic: ${chatState.lastTopic || 'Chapter Initialization Open Segment'} | Learning Mode Status: ${chatState.learningMode}`;
 };
 
-/**
- * Step 3: Compiles all clean context text blocks required for downstream LLM decision steps.
- *
- * @param {object} input - Outputs forwarded from Step 1 validation
- * @param {object} session - Session elements context maps forwarded from Step 2
- * @returns {Promise<{ language, memory, history, lastTutorResponse, curriculumSummary, focusChapterPrompt, currentStudyContext }>}
- */
+// I turn everything step1 and step2 gathered into the plain text blocks the two
+// prompts expect. No LLM call happens here, only formatting.
 export const buildContext = async ({ question, focusChapter }, { chatState, recentMessages, sessionId }) => {
-  if (isDev) console.log('step3.buildContext.js: Pre-processing contextual runtime serialization...');
+  if (isDev) console.log('[Step 3] Building context...');
 
-  // Concurrent-safe curriculum initialization zone
   const studyMap = await getStudyMap();
 
-  // 1. Evaluate user input script with languageDetector matrix
   const language = detectConversationLanguage({ question, recentMessages });
-  if (isDev) console.log(`Language Verification Matrix -> Target Response Script: ${language.answerLanguage}`);
+  if (isDev) console.log(`[Step 3] Answer language: ${language.answerLanguage}`);
 
-  // 2. Perform True Semantic Hydration for contextual stability
-  const currentStudyContext = buildSemanticStudyContext(chatState, studyMap);
-  if (isDev) console.log(`Semantic Hydration Map Output -> ${currentStudyContext}`);
+  const currentStudyContext = buildStudyContextLine(chatState, studyMap);
+  if (isDev) console.log(`[Step 3] Study context: ${currentStudyContext}`);
 
-  // 3. Serialize raw objects for prompt engines ingestion protocols
   const memory = JSON.stringify(formatMemoryForPrompt(chatState));
   const history = formatRecentHistory(recentMessages);
-  // Phase 5: decider only needs topic context for pronoun resolution + EXPLAIN_MORE
-  // searchQuery — the last Zuno entry stays full, older entries are compressed.
+  // The decider only needs enough history to resolve "iska", "wo" and EXPLAIN_MORE,
+  // so I send a compressed copy: last Zuno reply in full, older ones shortened.
   const deciderHistory = formatCompressedHistory(recentMessages.slice(-6));
   const lastTutorResponse = getLastTutorResponse(recentMessages);
-  const curriculumSummary = formatStudyMapSummary(studyMap); // Isolated here (will be explicitly skipped from step 4 parameters)
+  const curriculumSummary = formatStudyMapSummary(studyMap);
   const focusChapterPrompt = buildFocusChapterPrompt(focusChapter);
 
-  // STEP-0: Log approximate token sizes of every dynamic context component.
-  // turnNumber = completed turns so far + 1 (messageCount increments after step7).
+  // messageCount only goes up in step7, so the current turn is that plus one.
   const turnNumber = (chatState?.messageCount ?? 0) + 1;
   logContextSizes(sessionId, turnNumber, {
     history,
@@ -119,7 +105,7 @@ export const buildContext = async ({ question, focusChapter }, { chatState, rece
     focusChapterPrompt,
     currentStudyContext,
     lastStudyResponse: chatState?.lastStudyResponse || null,
-    recentMessages,   // passed through for intentRouter per-intent history windowing (Layer 2.4)
+    recentMessages,   // the router slices its own history window per intent, so it needs the raw list
     driftSignal: {
       consecutiveNonAcademic: chatState.consecutiveNonAcademicTurns ?? 0,
       totalNonAcademic:       chatState.totalNonAcademicTurns       ?? 0,

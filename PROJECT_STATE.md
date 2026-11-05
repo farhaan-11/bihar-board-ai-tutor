@@ -261,6 +261,16 @@ pre-router so greetings never reach an LLM.
 See `STAGE1_DONE.md` for the launch checklist and the definition of "done".
 Do not start Stage 2 work before every Stage 1 box is ticked.
 
+**Exception, opened 2026-11-05 — the backend readability refactor.**
+Stage 1 *engineering* is complete (A, C, D, F, G all ✅). The seven remaining `[~]`
+boxes are owner deferrals, not pending engineering: I1/I4/I5 (infra, accepted-risk
+notes in `STAGE1_DONE.md`) and E1–E4 (the pilot, owner-parked). On that basis the
+Stage 2 readability refactor is running now, on branch
+`backend-readability-refactor`. **Its plan, live status and per-batch decisions are
+in `docs/BACKEND_READABILITY_PLAN.md` — read that file's STATUS section before doing
+any refactor work.** It is comments, naming and behaviour-preserving structure only;
+no logic change, no dead-code deletion, no frontend.
+
 **Progress (updated 2026-10-29):**
 
 | Section | State |
