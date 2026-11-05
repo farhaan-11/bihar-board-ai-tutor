@@ -297,6 +297,15 @@ account-creation event, covering every entry point, never shown to returning use
 `AuthCallback.jsx` + an accept endpoint. Update ADR-013 when built.
 **Stage 2 — with the planned Register/Login redesign.**
 
+### O19. Split `retrieveContent` into one function per intent
+`ask/step5.retrieveContent.js` is one ~200-line function with four branches
+(NEXT_STEP, EXPLAIN_MORE, EXAM_INFO, and the default search with its out-of-focus
+fallback). Each branch could be its own small function. Found during the readability
+refactor (Batch 3), left alone because the refactor plan only allows splitting
+`saveAndRespond`. The golden set barely reaches the rare branches (topic coverage gap,
+global fallback finding nothing), so add a test for them first.
+**Stage 2.**
+
 ---
 
 ## AI Track — Python retrieval service

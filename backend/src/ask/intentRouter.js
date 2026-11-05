@@ -1,16 +1,8 @@
-/**
- * intentRouter.js
- *
- * Phase 2.3/2.4 — Routes each intent to its own prompt + model config.
- * Called by step6.generateResponse.js when USE_INTENT_ROUTER=true.
- *
- * What this file does (read top to bottom):
- *   1. INTENT_CONFIG   — which prompt + temperature + maxTokens per intent
- *   2. HISTORY_WINDOW  — how many recent messages each intent needs
- *   3. getChain()      — creates (and caches) the LLM chain per intent, lazily
- *   4. buildPromptInput() — assembles exactly the variables each prompt needs
- *   5. routeToIntentHandler() — the main function, called from step6
- */
+// Picks the prompt and model settings for each intent, then calls the LLM.
+// step6 calls this when USE_INTENT_ROUTER=true (the live setting).
+//
+// Read top to bottom: DRIFT_INSTRUCTIONS, INTENT_CONFIG, HISTORY_WINDOW, getChain(),
+// buildPromptInput(), routeToIntentHandler().
 
 import { RunnableSequence }      from '@langchain/core/runnables';
 import { greetingPrompt }          from '../prompts/intents/greetingPrompt.js';
@@ -28,35 +20,27 @@ import { parseJsonObject }       from '../utils/jsonParser.js';
 import { getAnswerLanguageInstruction } from '../utils/languageDetector.js';
 import { formatRecentHistory, formatCompressedHistory } from './promptHelpers.js';
 import { logCallTokens }         from '../utils/tokenLogger.js';
+import { extractTokenBreakdown } from '../utils/tokenUsage.js';
 import { ProviderUnavailableError, classifyProviderError } from '../utils/providerErrors.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// ─── Phase 3: Drift tier → behavioral instruction for the GREETING prompt ────
-//
-// Tier 0: no instruction (normal warm response).
-// Tier 1: gentle nudge toward studying.
-// Tier 2: firm redirect — but emotional messages still get one line of empathy first.
+// Extra instruction for the GREETING prompt, by drift tier (how many casual messages in a row).
+// Tier 0: none. Tier 1: gentle nudge to study.
+// Tier 2: firm redirect, but emotional messages still get one line of empathy first.
 const DRIFT_INSTRUCTIONS = {
   0: '',
   1: 'Behavior note: Student kai baar casual messages bhej chuka hai. Ek sentence mein briefly respond karo, phir clearly ek science topic padhne ke liye invite karo.',
   2: 'Behavior note: Student baar baar padhai se bhaag raha hai. Agar message emotional hai (exam stress, scared, tired) to sirf ek line empathy do phir study redirect. Agar sirf casual chat hai to directly 1-2 lines mein ek science topic suggest karo — aur kuch nahi.',
 };
 
-// ─── 1. Per-intent model config ───────────────────────────────────────────────
+// Prompt and model settings per intent.
+// temperature: 0 = same answer every time, higher = more varied.
+// maxTokens: hard cap on reply length. Short replies save real tokens.
+// GREETING is 0.5 so replies do not feel robotic. OUT_OF_CONTEXT, UNSAFE and CONCEPT are 0.
 //
-// temperature : how varied/creative the response is (0 = deterministic, 1 = very varied)
-// maxTokens   : hard cap on response length — short for simple intents saves real tokens
-//
-//   GREETING  → high temp (0.5) so responses feel varied, not robotic
-//   REDIRECT  → zero temp, tiny budget — it's always the same 1-line response
-//   CONCEPT   → zero temp — factual, consistent answers from retrieved content
-//
-// CONCEPT_QUESTION is split into two dispatch keys (CONCEPT_QUESTION_WITH_CHUNKS /
-// CONCEPT_QUESTION_NO_CHUNKS) resolved by resolveChainKey() below — see that function's
-// comment for why. decision.intent stays 'CONCEPT_QUESTION' everywhere else; only
-// getChain/buildPromptInput/HISTORY_WINDOW lookups use the resolved key.
-
+// CONCEPT_QUESTION has two keys here (WITH_CHUNKS / NO_CHUNKS), picked by resolveChainKey()
+// below. decision.intent stays 'CONCEPT_QUESTION' everywhere else.
 const INTENT_CONFIG = {
   GREETING:                     { prompt: greetingPrompt,          temperature: 0.5, maxTokens: 300  },
   EMOTIONAL_SUPPORT:            { prompt: emotionalSupportPrompt,  temperature: 0.5, maxTokens: 350  },
@@ -70,11 +54,7 @@ const INTENT_CONFIG = {
   NEXT_STEP:                    { prompt: nextStepPrompt,          temperature: 0.1, maxTokens: 1200 },
 };
 
-// ─── 2. Per-intent history window ────────────────────────────────────────────
-//
-// How many recent messages to send. 0 = none (redirect/unsafe don't need context).
-// Sending less history = fewer tokens per turn.
-
+// How many recent messages each intent gets. 0 = none. Less history means fewer tokens.
 const HISTORY_WINDOW = {
   GREETING:                     4,
   EMOTIONAL_SUPPORT:            4,
@@ -83,18 +63,12 @@ const HISTORY_WINDOW = {
   CHOOSE_COURSE:                4,
   EXPLAIN_MORE:                 6,
   CONCEPT_QUESTION_WITH_CHUNKS: 6,
-  // No-chunks redirect doesn't reference history at all — 0 saves tokens, matches
-  // the OUT_OF_CONTEXT/EXAM_INFO precedent for short, non-explanatory responses.
-  CONCEPT_QUESTION_NO_CHUNKS:   0,
+  CONCEPT_QUESTION_NO_CHUNKS:   0,   // the redirect does not use history at all
   EXAM_INFO:                    0,
   NEXT_STEP:                    2,
 };
 
-// ─── 3. Lazy chain cache ──────────────────────────────────────────────────────
-//
-// Each intent gets its own LLM chain, created only when first needed.
-// Avoids initializing all 7 chains at server start.
-
+// One chain per intent, built the first time it is needed.
 const intentChains = new Map();
 
 const getChain = (intent) => {
@@ -109,11 +83,7 @@ const getChain = (intent) => {
   return intentChains.get(intent);
 };
 
-// ─── 4. Build prompt variables per intent ────────────────────────────────────
-//
-// Each intent prompt only accepts specific {variable} slots.
-// This function sends ONLY what each prompt needs — nothing extra.
-
+// Each prompt only accepts certain {variables}. Send only what that prompt needs.
 const buildPromptInput = (intent, input, context, retrieval) => {
   const { question }                                                                      = input;
   const { language, curriculumSummary, focusChapterPrompt, recentMessages = [], driftSignal, lastStudyResponse } = context;
@@ -121,9 +91,8 @@ const buildPromptInput = (intent, input, context, retrieval) => {
 
   const answerLang = getAnswerLanguageInstruction(language.answerLanguage, intent);
   const window     = HISTORY_WINDOW[intent] ?? 6;
-  // Phase 5: use compressed history for all intents except EXPLAIN_MORE.
-  // EXPLAIN_MORE needs the full last Zuno response for its variation mandate
-  // ("never open with the same sentence/headings as your last explanation").
+  // Older Zuno replies are compressed, except for EXPLAIN_MORE. Its prompt says never to
+  // open like the last explanation, so it needs the full last reply.
   const history    = window === 0
     ? ''
     : intent === 'EXPLAIN_MORE'
@@ -142,7 +111,6 @@ const buildPromptInput = (intent, input, context, retrieval) => {
 
     case 'OUT_OF_CONTEXT':
     case 'UNSAFE_OR_ABUSIVE':
-      // Simplest prompts — only need the message itself
       return { message: question };
 
     case 'CHOOSE_COURSE':
@@ -155,8 +123,7 @@ const buildPromptInput = (intent, input, context, retrieval) => {
       return { message: question, answerLanguageInstruction: answerLang, focusChapter: focusChapterPrompt, retrievedContext, history, lastStudyResponse: lastStudyResponse || 'No previous study explanation.' };
 
     case 'CONCEPT_QUESTION_NO_CHUNKS':
-      // Minimal input — matches OUT_OF_CONTEXT/UNSAFE_OR_ABUSIVE pattern. No retrievedContext,
-      // no history, no focusChapter: the prompt's only job is a short, honest redirect.
+      // The prompt only gives a short, honest redirect, so no retrievedContext, history or focusChapter.
       return { message: question, answerLanguageInstruction: answerLang };
 
     case 'EXAM_INFO':
@@ -166,15 +133,13 @@ const buildPromptInput = (intent, input, context, retrieval) => {
       return { message: question, answerLanguageInstruction: answerLang, retrievedContext, history };
 
     default:
-      // Unknown intent — use concept question inputs as safe fallback
+      // Unknown intent: use the concept question inputs.
       return { message: question, answerLanguageInstruction: answerLang, focusChapter: focusChapterPrompt, retrievedContext, history };
   }
 };
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-// Cleans up the sections array from LLM output.
-const normalizeSections = (sections) => {
+// Cleans up the sections array from LLM output (at most 5 sections).
+export const normalizeSections = (sections) => {
   if (!Array.isArray(sections)) return [];
   return sections
     .map((s) => ({ heading: String(s?.heading || '').trim(), content: String(s?.content || '').trim() }))
@@ -182,10 +147,9 @@ const normalizeSections = (sections) => {
     .slice(0, 5);
 };
 
-// Guard against the LLM literally echoing a prompt's example placeholder text
-// instead of writing a real answer (e.g. "Explanation here" from
-// conceptQuestionPrompt.js / nextStepPrompt.js). "Aage badhein" is deliberately
-// excluded — that's a real hardcoded chip label, not a leaked placeholder.
+// The LLM sometimes echoes a prompt's example text (like "Explanation here") instead of
+// writing a real answer. This catches that. "Aage badhein" is not listed on purpose:
+// it is a real chip label, not leaked placeholder text.
 const PLACEHOLDER_SIGNATURES = new Set([
   'explanation here',
   'section heading',
@@ -199,20 +163,9 @@ export const isPlaceholderResponse = (sections) =>
   sections.length > 0 &&
   sections.every((s) => PLACEHOLDER_SIGNATURES.has(s.content.trim().toLowerCase()));
 
-// Reads token usage from the LangChain callback. Same pattern as step4 and step6.
-const extractTokenBreakdown = (output) => {
-  const usage    = output?.llmOutput?.tokenUsage || {};
-  const inputTok = usage.promptTokens     ?? 0;
-  const outTok   = usage.completionTokens ?? 0;
-  const cached   = (usage.promptTokensCached ?? usage.cache_read_input_tokens ?? 0)
-                 || (usage.prompt_tokens_details?.cached_tokens ?? 0);
-  return { input: inputTok, output: outTok, total: usage.totalTokens ?? (inputTok + outTok), cached };
-};
-
-// Resolves CONCEPT_QUESTION to one of two prompt/config variants depending on whether
-// step5 actually retrieved usable content. Every other intent passes through unchanged.
-// decision.intent, logging, drift tracking, and step7's whitelists all keep seeing plain
-// 'CONCEPT_QUESTION' — this resolved key exists ONLY to pick the prompt/chain/history-window.
+// CONCEPT_QUESTION uses one of two prompt variants, depending on whether step5 found usable
+// content. Every other intent passes through unchanged. The returned key only picks the
+// prompt, chain and history window. Logging, drift tracking and step7 still see 'CONCEPT_QUESTION'.
 const resolveChainKey = (intent, retrievedContext) => {
   if (intent !== 'CONCEPT_QUESTION') return intent;
   const hasChunks = Boolean(retrievedContext)
@@ -221,14 +174,11 @@ const resolveChainKey = (intent, retrievedContext) => {
   return hasChunks ? 'CONCEPT_QUESTION_WITH_CHUNKS' : 'CONCEPT_QUESTION_NO_CHUNKS';
 };
 
-// ─── 5. Main dispatch function ────────────────────────────────────────────────
-
 export const routeToIntentHandler = async (input, context, decision, retrieval, streamCallbacks = null, abortSignal = null) => {
   const { intent, responseMode } = decision;
   const chainKey = resolveChainKey(intent, retrieval.retrievedContext);
 
-  // CHAPTER_COMPLETE: step5 signals the chapter is finished.
-  // No LLM call needed — return a fixed completion message directly.
+  // step5 says the chapter is finished. No LLM call, return a fixed message.
   if (retrieval.retrievedContext === 'CHAPTER_COMPLETE') {
     return {
       status:           'answered',
@@ -244,8 +194,8 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
     };
   }
 
-  // OUT-OF-FOCUS REDIRECT: topic found globally but not in student's focus chapter.
-  // Deterministic response — no LLM call needed (same pattern as CHAPTER_COMPLETE above).
+  // The topic exists, but in another chapter than the student's focus chapter.
+  // Fixed reply, no LLM call.
   if (retrieval.isOutOfFocusAnswer && intent === 'CONCEPT_QUESTION') {
     const chapterTitle = input.focusChapter?.hinglishTitle || input.focusChapter?.title || 'is chapter';
     if (isDev) console.log(`[IntentRouter] Out-of-focus answer detected for focus chapter: "${chapterTitle}"`);
@@ -261,11 +211,9 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
     };
   }
 
-  // NO CHAPTER SELECTED: NEXT_STEP fired but there's no active chapter (Global Mode).
-  // Deterministic response — no LLM call needed (same pattern as CHAPTER_COMPLETE above).
-  // getNextTopic() returns 'no_chapter' status only when chatState.currentChapterId is
-  // null, which never happens in a valid Focus Mode session — so this is safe to key
-  // purely off the (retrievedContext, intent) pair without checking studyMode directly.
+  // NEXT_STEP with no active chapter (Global Mode). Fixed reply, no LLM call.
+  // getNextTopic() only says 'no_chapter' when chatState.currentChapterId is null, which never
+  // happens in Focus Mode, so the (NO_RETRIEVED_CONTEXT, NEXT_STEP) pair is enough to detect it.
   if (retrieval.retrievedContext === 'NO_RETRIEVED_CONTEXT' && intent === 'NEXT_STEP') {
     return {
       status:           'answered',
@@ -282,7 +230,7 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
     };
   }
 
-  // Guard: unknown intent — should never happen (normalizeDecision in step4 guards this)
+  // Should never happen: step4's normalizeDecision already fixes unknown intents.
   if (!INTENT_CONFIG[chainKey]) {
     console.warn(`[IntentRouter] Unknown intent "${intent}" — falling back to CONCEPT_QUESTION`);
     return routeToIntentHandler(input, context, { ...decision, intent: 'CONCEPT_QUESTION' }, retrieval);
@@ -313,17 +261,15 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
 
     const parsed = parseJsonObject(rawResponse, `IntentRouter [${chainKey}]`);
 
-    // Guard 2: Title rescue — universal.
-    // LLM sometimes puts the response text in "title" instead of sections[0].content.
-    // If sections are empty but title has content, promote title to a section.
+    // The LLM sometimes puts the answer in "title" instead of sections[0].content.
+    // If sections are empty but the title has text, use the title as a section.
     let sections = normalizeSections(parsed.sections);
     if (!sections.length && String(parsed.title || '').trim()) {
       sections = [{ heading: '', content: String(parsed.title).trim() }];
     }
 
-    // Guard: LLM echoed a prompt example's placeholder text verbatim (e.g. "Explanation
-    // here") instead of a real answer. Fall back to the same curated message the
-    // parse-error path below already uses — proven to render safely through step6→step7.
+    // The LLM echoed a prompt example (e.g. "Explanation here") instead of an answer.
+    // Return the same safe message the parse-error path below uses.
     if (isPlaceholderResponse(sections)) {
       console.error(`[IntentRouter] Placeholder leak for "${intent}" — falling back`);
       logCallTokens('TUTOR', capturedBreakdown, { mode: responseMode, intent, status: 'PLACEHOLDER_LEAK' });
@@ -339,20 +285,17 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
       };
     }
 
-    // Guard 1+3: GREETING and EMOTIONAL_SUPPORT must always return status="answered".
-    // Prevents LLM from accidentally returning insufficient_context on non-academic messages.
+    // GREETING and EMOTIONAL_SUPPORT are always "answered", so the LLM cannot
+    // return insufficient_context for a non-academic message.
     let status = String(parsed.status || 'answered').trim();
     if (intent === 'GREETING' || intent === 'EMOTIONAL_SUPPORT') {
       status = 'answered';
     }
 
-    // Guard 4: Retrieved-content override (tutor flakiness fix).
-    // CONCEPT_QUESTION/EXPLAIN_MORE sometimes say "insufficient_context" even though step5
-    // already retrieved real, quality-checked chunks (past the reranker + out-of-focus
-    // fallback) and the LLM itself produced a substantive answer. That is model confusion,
-    // not a genuine content gap — a genuine gap already short-circuits earlier via
-    // retrievedContext === 'NO_RETRIEVED_CONTEXT' (see step5/intentRouter CHAPTER_COMPLETE
-    // and out-of-focus branches), which this guard deliberately excludes.
+    // CONCEPT_QUESTION and EXPLAIN_MORE sometimes say "insufficient_context" even though
+    // step5 found good chunks and the LLM wrote a real answer. That is model confusion, not
+    // a content gap. A real gap is handled earlier (retrievedContext is NO_RETRIEVED_CONTEXT),
+    // which this check leaves out.
     const RETRIEVAL_BACKED_INTENTS = new Set(['CONCEPT_QUESTION', 'EXPLAIN_MORE']);
     const hasRealRetrievedContent =
       Boolean(retrieval.retrievedContext) &&
@@ -389,7 +332,7 @@ export const routeToIntentHandler = async (input, context, decision, retrieval, 
     return { ...normalized, tokenUsage: capturedBreakdown.total, tokenBreakdown: capturedBreakdown };
 
   } catch (error) {
-    intentChains.delete(chainKey); // reset chain so it's rebuilt fresh on next request
+    intentChains.delete(chainKey); // rebuild this chain fresh on the next request
 
     const errorType = classifyProviderError(error);
 

@@ -8,15 +8,15 @@ This replaces v1, which was comments-only and wrong.
 ## STATUS — read this first, update it at the end of every batch
 
 **Branch:** `backend-readability-refactor`
-**Last updated:** 2026-11-05 (after Batch 2)
+**Last updated:** 2026-11-05 (after Batch 3)
 
 | Batch | State |
 |---|---|
-| 0 — Shared duplicates | ⏳ partly done, finished file-by-file as each batch touches the file. `cleanText`: 2 of 5 copies removed (step1, promptHelpers `compactText`). Remaining: step7, chapterResolver, sourceFormatter. `utils/tokenUsage.js` created in Batch 2, `step4` copy removed. Remaining token copies: `step6` and **`intentRouter.js:203` (a third copy, found in Batch 2)**. |
+| 0 — Shared duplicates | ⏳ partly done, finished file-by-file as each batch touches the file. `cleanText`: 2 of 5 copies removed (step1, promptHelpers `compactText`). Remaining: step7, chapterResolver, sourceFormatter. Token helper: **done**, `utils/tokenUsage.js` is the only copy (step4, step6 and intentRouter all import it). |
 | **1 — The spine** | ✅ **done 2026-11-05, committed `79eb320`.** 575 → 526 lines, comments 147 → 61 (26% → 11%), internal refs 6 → 0. 4 renames. Offline 4/4 green, golden set PASS, owner read all 4 files. Not pushed. |
 | **2 — The brain** | ✅ **done 2026-11-05.** 459 → 364 lines (+24 new `tokenUsage.js`), comment lines 144 → 65 (~18%, the measured "why" notes were kept on purpose), internal refs → 0. 3 renames. Offline 4/4 green, golden set PASS (owner ran it), owner read all 3 files. |
-| **3 — Retrieval + answer** | ⬜ **START HERE.** `step5.retrieveContent.js` (315) · `step6.generateResponse.js` (288) · `intentRouter.js` (417, the live answer path). See §4 Batch 3 and §5 for the loop. |
-| 4 — `step7` alone | ⬜ |
+| **3 — Retrieval + answer** | ✅ **done 2026-11-05.** 1,020 → 862 lines, comment lines 213 → 113, internal refs → 0. `noContent()` in step5, token helper and `normalizeSections` duplicates removed, `normalizedIntent` gone. Offline 4/4 + shadow test green, old-vs-new compared on every branch that runs without the DB or an LLM. Golden set: owner runs it, result pending at the time of writing. |
+| **4 — `step7` alone** | ⬜ **START HERE.** `step7.saveAndRespond.js` (491). See §4 Batch 4. Own session. |
 | 5 — Edges + file rename | ⬜ |
 | 6 — Auth (optional) | ⬜ |
 
@@ -44,14 +44,30 @@ This replaces v1, which was comments-only and wrong.
 - **Batch 2 type-E change done:** `step4` `decision.reason` default string is now
   `'No reason given.'`. Grep found no reader of `decision.reason`.
 
-### Known landmines waiting in Batch 3
+- **Batch 3 renames rejected:** `resolveChainKey` (intentRouter) keeps its name. It is
+  accurate, it returns the key `getChain()` takes. `isPlaceholderResponse` and
+  `compareWithPython` are imported by tests, so they stay untouched.
+- **Batch 3 addition beyond the plan:** `normalizeSections` was duplicated in `step6` and
+  `intentRouter` (identical logic). `intentRouter` now exports it, `step6` imports it.
+- **Batch 3 `step6` condition:** `['CONVERSATION'].includes(String(responseMode).toUpperCase())`
+  became `responseMode === 'conversation'`. Step 4 only ever returns the three lowercase
+  response modes, and the same function already compares `=== 'conversation'` twice.
+- **`step5` `noContent(extra)`:** the 6 call sites each pass exactly the extra keys the old
+  literal had (`nextTopicSignal: null` vs absent vs an object matters, so it was not unified).
+- `BACKLOG.md` O19 added: split `retrieveContent` into one function per intent.
 
-- `extractTokenBreakdown` still has 2 local copies: `step6.generateResponse.js` and
-  `intentRouter.js:203`. The `intentRouter` one is written in a different style but
-  computes the same values. Delete both and import `utils/tokenUsage.js`.
-- From §4: `noContent()` for the 6 repeated returns in `step5`, `normalizedIntent` →
-  `mode` in `step6`, the `['CONVERSATION'].includes` line, step6's wrong "default" comment.
-- `intentRouter.js` is the live answer path (417 lines). Read it before editing.
+### Known landmines waiting in Batch 4
+
+- `saveAndRespond` has 9 positional parameters; its 2 call sites are in `askOrchestrator.js`.
+  Both change to one options object.
+- `_intent` and `intent` in `step7` are two different values. Rename `_intent` to
+  `rawIntent`, never merge them.
+- `effectiveCount` (askOrchestrator + `utils/providerErrors.js`) was rejected earlier because
+  it crosses files. Re-check whether `step7` now makes it worth doing.
+- `cleanText` copy in `step7` is the third of five to remove. Remaining after that:
+  `chapterResolver`, `sourceFormatter`.
+- Golden set barely reaches rare `step7` branches. Read the branch list before editing and
+  tell the owner which ones the golden run will not exercise.
 
 ### Carried to BACKLOG, not fixed here
 
