@@ -11,21 +11,9 @@ const createRateLimitResponse = (message) => ({
   },
 });
 
-// Key a limiter bucket by WHO is making the request, not by where from.
-// userId for logged-in students, guest id for guests, and only a bare IP when
-// neither is present. This is what keeps a whole classroom / coaching centre /
-// mobile-carrier network (all sharing one public IP under CGNAT) from sharing a
-// single bucket — each student gets their own. The per-request ceiling therefore
-// never has to grow with the user count.
-// `req.user` is attached by optionalAuth; `req.guest` by attachGuest (the single
-// trusted reader of the X-Guest-Id header — a signed guest token, or a legacy
-// bare UUID during the transition window). `ipKeyGenerator` is
-// express-rate-limit's own IPv6-safe normaliser.
-export const identityKeyGenerator = (req) => {
-  if (req.user) return `user_${req.user.id}`;
-  const guestId = req.guest?.id;
-  return guestId ? `guest_${guestId}` : ipKeyGenerator(req.ip);
-};
+// attachCallerId is the only place that decides who the caller is, so no two
+// limiters can disagree about the same student. Unknown callers fall back to IP.
+export const identityKeyGenerator = (req) => req.callerId || ipKeyGenerator(req.ip);
 
 // Each limiter gets its own Redis key namespace via prefix.
 // Without unique prefixes, all three limiters would share counters — wrong behavior.
@@ -35,15 +23,33 @@ const createRedisStore = (prefix) =>
     prefix,
   });
 
-// 1. Global API Limiter (Protects against basic scraping and DDoS)
-// Max 150 requests per 15 minutes per IP
-export const globalApiLimiter = rateLimit({
+// 1a. Per-student API limiter — stops one student eating the whole class's quota.
+// 20 kids on one school wifi used to share a single bucket; now each gets their own.
+export const perStudentApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 150,
+  keyGenerator: identityKeyGenerator,
   standardHeaders: true,
   legacyHeaders: false,
   passOnStoreError: true,
-  store: createRedisStore('rl_global:'),
+  store: createRedisStore('rl_student:'),
+  handler: (req, res) => {
+    res.status(429).json(
+      createRateLimitResponse('Bahut saari requests aa rahi hain. Kripya thodi der baad try karein.')
+    );
+  },
+});
+
+// 1b. Per-IP API limiter — catches a flood from one source. It sits high on purpose:
+// fairness is already handled above, so this number only has to stop gross abuse.
+// A busy 30-student classroom peaks near 1,800 per window and passes; a script does not.
+export const perIpApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 2500,
+  standardHeaders: true,
+  legacyHeaders: false,
+  passOnStoreError: true,
+  store: createRedisStore('rl_ip:'),
   handler: (req, res) => {
     res.status(429).json(
       createRateLimitResponse('Bahut saari requests aa rahi hain. Kripya thodi der baad try karein.')

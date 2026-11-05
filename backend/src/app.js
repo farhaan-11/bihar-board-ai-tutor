@@ -15,7 +15,8 @@ import supportRoutes         from './routes/support.routes.js';
 import ApiError from './utils/ApiError.js';
 import { sendResponse } from './utils/sendResponse.js';
 import { errorHandler } from './middlewares/error.middleware.js';
-import { globalApiLimiter } from './middlewares/rateLimiters.js';
+import { attachCallerId } from './auth/callerIdMiddleware.js';
+import { perIpApiLimiter, perStudentApiLimiter } from './middlewares/rateLimiters.js';
 
 const app = express();
 
@@ -56,8 +57,8 @@ app.get('/', (_req, res) => {
 
 app.use('/health', healthRoutes);
 
-// Apply global rate limiter only to API routes------
-app.use('/api', globalApiLimiter);
+// attachCallerId has to run first — perStudentApiLimiter counts by the name it sets.
+app.use('/api', attachCallerId, perIpApiLimiter, perStudentApiLimiter);
 
 app.use('/api/v1/ask',              askRoutes);
 app.use('/api/v1/study-map',       studyMapRoutes);
