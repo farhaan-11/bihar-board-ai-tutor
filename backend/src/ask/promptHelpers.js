@@ -1,25 +1,21 @@
-export const compactText = (value) =>
-  String(value || '').replace(/\s+/g, ' ').trim();
+import { cleanText } from '../utils/text.js';
 
-/**
- * Formats DB chat logs into plain text conversation lines for the prompt.
- * Used by: legacy step6 path, EXPLAIN_MORE intent (needs full Zuno responses
- * for variation mandate), and as a fallback inside formatCompressedHistory.
- */
+// Turns chat messages into plain "Student: ... / Zuno: ..." lines, all in full.
+// Used by the legacy step6 path, by EXPLAIN_MORE (needs the full last reply),
+// and as the fallback inside formatCompressedHistory.
 export const formatRecentHistory = (messages = []) => {
   if (!messages.length) {
     return 'No previous messages in this session.';
   }
 
   return messages
-    .map((message) => `${message.role === 'student' ? 'Student' : 'Zuno'}: ${compactText(message.text)}`)
+    .map((message) => `${message.role === 'student' ? 'Student' : 'Zuno'}: ${cleanText(message.text)}`)
     .join('\n');
 };
 
-// Shrinks an older Zuno response to its first 30 words + word count.
-// The "Zuno [prev, ~Nw]:" prefix is visually distinct from "Zuno:" so
-// intent prompts' "check the most recent Zuno: entry" instruction
-// unambiguously targets the one full entry at the bottom of history.
+// Shrinks an older Zuno reply to its first 30 words plus the word count.
+// The "Zuno [prev, ~Nw]:" prefix differs from "Zuno:", so a prompt that says
+// "check the most recent Zuno: entry" can only mean the one full entry at the bottom.
 const compressZunoResponse = (text) => {
   const words = text.split(/\s+/);
   const preview = words.slice(0, 30).join(' ');
@@ -27,56 +23,44 @@ const compressZunoResponse = (text) => {
   return `Zuno [prev, ~${words.length}w]: ${preview}${suffix}`;
 };
 
-/**
- * History formatter with token-efficient compression.
- *
- * The LAST Zuno entry is always kept full because:
- *   - CONCEPT_QUESTION: anti-repetition rule checks "most recent Zuno: entry"
- *   - GREETING: meta-reaction handling needs the exact previous reply
- * All OLDER Zuno entries are compressed to first 30 words + word count.
- * Student messages are NEVER compressed — they carry intent and are short.
- *
- * Use for:     GREETING, CHOOSE_COURSE, CONCEPT_QUESTION, NEXT_STEP, deciderHistory
- * Do NOT use for: EXPLAIN_MORE (variation mandate requires full last response)
- */
+// Same as formatRecentHistory, but older Zuno replies are compressed to save tokens.
+// The last Zuno reply stays full, because the anti-repetition rule (CONCEPT_QUESTION)
+// and the meta-reaction handling (GREETING) both need the exact previous reply.
+// Student messages are never compressed.
+// Not for EXPLAIN_MORE: it needs the full last reply, so it uses formatRecentHistory.
 export const formatCompressedHistory = (messages = []) => {
   if (!messages.length) return 'No previous messages in this session.';
 
-  // Find the last Zuno message index — this one stays full
   let lastZunoIdx = -1;
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === 'tutor') { lastZunoIdx = i; break; }
   }
 
-  // No Zuno message in window yet — nothing to compress, use full format
+  // No Zuno reply yet, so there is nothing to compress.
   if (lastZunoIdx < 0) return formatRecentHistory(messages);
 
   return messages
     .map((msg, idx) => {
-      const text = compactText(msg.text);
-      if (msg.role === 'student') return `Student: ${text}`;  // never compress
-      if (idx === lastZunoIdx)    return `Zuno: ${text}`;     // last entry — full
-      return compressZunoResponse(text);                       // older entries — compressed
+      const text = cleanText(msg.text);
+      if (msg.role === 'student') return `Student: ${text}`;
+      if (idx === lastZunoIdx)    return `Zuno: ${text}`;
+      return compressZunoResponse(text);
     })
     .join('\n');
 };
 
-/**
- * Returns the tutor's previous reply (used for repetition checks).
- */
+// Returns Zuno's previous reply, used for repetition checks.
 export const getLastTutorResponse = (messages = []) => {
   const lastTutorMessage = [...messages]
     .reverse()
     .find((message) => message.role === 'tutor');
 
   return lastTutorMessage
-    ? compactText(lastTutorMessage.text)
+    ? cleanText(lastTutorMessage.text)
     : 'No previous Zuno response.';
 };
 
-/**
- * Formats the available chapters list into a short summary for the prompt.
- */
+// Turns the study map into a short "Subject / Section: 1. Chapter; 2. Chapter" summary.
 export const formatStudyMapSummary = (studyMap) => {
   const subjects = studyMap?.focusStudy?.subjects || [];
 
@@ -98,9 +82,7 @@ export const formatStudyMapSummary = (studyMap) => {
   }).join('\n\n');
 };
 
-/**
- * State records fields mapping rules definitions.
- */
+// Picks the chat-state fields the prompts need, with a default for each missing one.
 export const formatMemoryForPrompt = (chatState) => ({
   currentSubjectId: chatState?.currentSubjectId || null,
   currentSectionId: chatState?.currentSectionId || null,
@@ -112,10 +94,9 @@ export const formatMemoryForPrompt = (chatState) => ({
   lastDoubtQuestion: chatState?.lastDoubtQuestion || null,
 });
 
-// Strips the [Context] header prepended by markdownChunker and returns only the
-// actual educational text after the [Content] marker.
-// Without this, every chunk sent to the LLM contains a duplicate metadata block
-// (Board/Class/Subject/Chapter/Topic) that is already present in the [Source N] header.
+// Chunks start with a [Context] block (Board/Class/Subject/Chapter/Topic) added by
+// markdownChunker. The [Source N] header already shows that, so we return only the
+// text after the [Content] marker.
 const extractChunkContent = (chunk) => {
   const raw = chunk.content || '';
   const idx = raw.indexOf('[Content]');
@@ -123,9 +104,7 @@ const extractChunkContent = (chunk) => {
   return String(raw).replace(/\s+/g, ' ').trim();
 };
 
-/**
- * RAG nodes lists processing module block string assembler.
- */
+// Builds the "[Source 1] ... [Source 2] ..." text block that goes into the tutor prompt.
 export const formatRetrievedContext = (chunks = []) => {
   if (!chunks.length) {
     return 'NO_RETRIEVED_CONTEXT';
@@ -145,20 +124,19 @@ ${content}`;
   }).join('\n\n---\n\n');
 };
 
-/**
- * Multi blocks elements strings mapping utility.
- */
+// Joins the title and sections into one plain answer string.
+// A section whose heading just repeats the title is added without its heading.
 export const sectionsToAnswerText = ({ title, sections = [] }) => {
   const parts = [];
-  const normalizedTitle = compactText(title);
+  const normalizedTitle = cleanText(title);
 
   if (normalizedTitle) {
     parts.push(normalizedTitle);
   }
 
   for (const section of sections) {
-    const heading = compactText(section.heading);
-    const content = compactText(section.content);
+    const heading = cleanText(section.heading);
+    const content = cleanText(section.content);
     const headingRepeatsTitle =
       normalizedTitle &&
       heading.toLowerCase() === normalizedTitle.toLowerCase();

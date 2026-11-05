@@ -7,7 +7,7 @@ import { validateInput } from './step1.validateInput.js';
 import { loadSession } from './step2.loadSession.js';
 import { buildContext } from './step3.buildContext.js';
 import { decideRetrieval } from './step4.decideRetrieval.js';
-import { probeAcademicSimilarity } from './intentSafetyNet.js';
+import { checkSyllabusMatch } from './intentSafetyNet.js';
 import { retrieveContent } from './step5.retrieveContent.js';
 import { generateResponse } from './step6.generateResponse.js';
 import { saveAndRespond } from './step7.saveAndRespond.js';
@@ -64,7 +64,7 @@ export const askQuestion = async (
     // No English translation means a greeting or an emotional message, so there is nothing to check.
     const SAFETY_NET_TARGETS = new Set(['GREETING', 'OUT_OF_CONTEXT']);
     if (SAFETY_NET_TARGETS.has(decision.intent) && decision.englishQuery) {
-      const { score, fired } = await probeAcademicSimilarity(decision.englishQuery);
+      const { score, fired } = await checkSyllabusMatch(decision.englishQuery);
       if (fired) {
         console.warn(
           `[SafetyNet] ${decision.intent} → CONCEPT_QUESTION | score:${score.toFixed(3)} | english:"${decision.englishQuery.slice(0, 60)}"`

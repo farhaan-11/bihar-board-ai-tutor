@@ -8,14 +8,14 @@ This replaces v1, which was comments-only and wrong.
 ## STATUS — read this first, update it at the end of every batch
 
 **Branch:** `backend-readability-refactor`
-**Last updated:** 2026-11-05
+**Last updated:** 2026-11-05 (after Batch 2)
 
 | Batch | State |
 |---|---|
-| 0 — Shared duplicates | ⏳ partly done — `utils/text.js` created, 1 of 5 `cleanText` copies removed (step1). Remaining: step7, chapterResolver, sourceFormatter, promptHelpers (`compactText`). Token helpers not started. |
+| 0 — Shared duplicates | ⏳ partly done, finished file-by-file as each batch touches the file. `cleanText`: 2 of 5 copies removed (step1, promptHelpers `compactText`). Remaining: step7, chapterResolver, sourceFormatter. `utils/tokenUsage.js` created in Batch 2, `step4` copy removed. Remaining token copies: `step6` and **`intentRouter.js:203` (a third copy, found in Batch 2)**. |
 | **1 — The spine** | ✅ **done 2026-11-05, committed `79eb320`.** 575 → 526 lines, comments 147 → 61 (26% → 11%), internal refs 6 → 0. 4 renames. Offline 4/4 green, golden set PASS, owner read all 4 files. Not pushed. |
-| **2 — The brain** | ⬜ **START HERE.** `step4.decideRetrieval.js` (214) · `intentSafetyNet.js` (72) · `promptHelpers.js` (173). See §4 Batch 2 and §5 for the loop. |
-| 3 — Retrieval + answer | ⬜ |
+| **2 — The brain** | ✅ **done 2026-11-05.** 459 → 364 lines (+24 new `tokenUsage.js`), comment lines 144 → 65 (~18%, the measured "why" notes were kept on purpose), internal refs → 0. 3 renames. Offline 4/4 green, golden set PASS (owner ran it), owner read all 3 files. |
+| **3 — Retrieval + answer** | ⬜ **START HERE.** `step5.retrieveContent.js` (315) · `step6.generateResponse.js` (288) · `intentRouter.js` (417, the live answer path). See §4 Batch 3 and §5 for the loop. |
 | 4 — `step7` alone | ⬜ |
 | 5 — Edges + file rename | ⬜ |
 | 6 — Auth (optional) | ⬜ |
@@ -35,22 +35,23 @@ This replaces v1, which was comments-only and wrong.
 - **4-line comment exception used once** in `askOrchestrator.js`, for the safety-net
   reason. Working as intended.
 
-### Known landmines waiting in Batch 2
+- **`normalizeDecision` rename (step4): rejected.** The name is accurate. 4 other files
+  mention it, only in comments (`deciderPrompt.js`, `decisionSchema.js`,
+  `intentRouter.js:285`, `scripts/test-decider-structured.js`). Not worth touching them.
+- **Batch 2 renames done:** `probeAcademicSimilarity` → `checkSyllabusMatch` (2 files),
+  `getThreshold` → `getSimilarityThreshold` (local), `compactText` → shared `cleanText`.
+  The returned key `fired` was kept on purpose.
+- **Batch 2 type-E change done:** `step4` `decision.reason` default string is now
+  `'No reason given.'`. Grep found no reader of `decision.reason`.
 
-- `intentSafetyNet.js` header states three things that are false: it points at
-  `vectorStoreLoader.js` (that file does not exist), says Gemini embeddings are
-  primary (OpenAI is), and says the threshold is 0.65 matching `retriever.js` line 26
-  (the file's own default is 0.70, and the retriever constant is on line 31).
-- `step4.decideRetrieval.js` carries 7 `ADR-011` / `BUG-N` references and a JSDoc block
-  documenting parameters the function does not take (`currentStudyContext`, `memory`,
-  `history`, `lastTutorResponse`, `focusChapterPrompt`). The signature is only
-  `({ question }, { deciderHistory, language }, abortSignal)`.
-- `step4:148` holds a runtime string, not a comment:
-  `'Processed via structural normalizer normalization parameters.'` It ships inside
-  `decision.reason` in the API response. The frontend never reads `decision`, so it is
-  safe to change — but it is change type **E**, handled separately from comments.
-- `promptHelpers.js` has three word-salad JSDoc blocks (lines 102, 127, 149) and the
-  `compactText` copy of `cleanText` — the second of the five duplicates to remove.
+### Known landmines waiting in Batch 3
+
+- `extractTokenBreakdown` still has 2 local copies: `step6.generateResponse.js` and
+  `intentRouter.js:203`. The `intentRouter` one is written in a different style but
+  computes the same values. Delete both and import `utils/tokenUsage.js`.
+- From §4: `noContent()` for the 6 repeated returns in `step5`, `normalizedIntent` →
+  `mode` in `step6`, the `['CONVERSATION'].includes` line, step6's wrong "default" comment.
+- `intentRouter.js` is the live answer path (417 lines). Read it before editing.
 
 ### Carried to BACKLOG, not fixed here
 

@@ -1,46 +1,32 @@
-/**
- * intentSafetyNet.js
- *
- * Layer 2.2 — Code-side academic safety net.
- *
- * When the decider (8B model) classifies a message as GREETING or OUT_OF_CONTEXT,
- * this probe checks if the message actually contains academic content by running
- * a fast vector similarity check (top-1 result only).
- *
- * Design decisions:
- * - Language-agnostic: Gemini multilingual embeddings handle Hindi, Hinglish, English.
- * - Fail-open: any error returns { fired: false } — pipeline is never blocked by probe failure.
- * - Zero extra disk I/O: vectorStoreLoader caches the store after first load (see vectorStoreLoader.js).
- * - Threshold is env-configurable: tune in production without code changes.
- *
- * Score scale: cosine similarity 0–1 (higher = more relevant).
- * Default threshold 0.65 matches the retriever's FINAL_SCORE_THRESHOLD (retriever.js line 26).
- */
+// Safety net for the decider. When it says GREETING or OUT_OF_CONTEXT, we still check the
+// message against the indexed chapters (top-1 vector search). If it matches well, the caller
+// upgrades the intent to CONCEPT_QUESTION.
+// Any error returns { fired: false }, so a failed check never blocks the pipeline.
 
 import { Chunk } from '../models/chunk.model.js';
 import { createQueryEmbeddings } from '../rag/geminiEmbeddings.js';
 
-// 0.70. The probe now receives the decider's ENGLISH translation (see askOrchestrator.js), not the
-// student's raw Hinglish. Measured separation with English queries: genuine Class 10 questions
-// score 0.71-0.85, out-of-scope topics score <= 0.66 (e.g. Newton's laws 0.657). Raw Hinglish used
-// to score 0.59-0.69 and never fired at all, which is the bug this gating fixed.
-// Do NOT lower this to 0.65: "Maths ke questions solve karo" scores 0.683 and would falsely fire.
-const getThreshold = () =>
+// Default is 0.70, tunable through SAFETY_NET_SIMILARITY_THRESHOLD.
+// This check gets the decider's English translation, not the student's raw Hinglish.
+// English: real Class 10 questions score 0.71-0.85, out-of-scope topics score 0.66 or less.
+// Raw Hinglish scored only 0.59-0.69, so it never fired at all.
+// Do not lower this to 0.65: "Maths ke questions solve karo" scores 0.683 and would fire wrongly.
+const getSimilarityThreshold = () =>
   parseFloat(process.env.SAFETY_NET_SIMILARITY_THRESHOLD ?? '0.70');
 
 /**
- * Probes whether a query has relevant academic content in the indexed vector store.
+ * Checks if a query matches any indexed chapter content.
  *
- * @param {string} query - The student's raw message (any language)
+ * @param {string} query - The decider's English translation of the student's message
  * @returns {Promise<{ score: number, fired: boolean }>}
- *   score  — top-1 cosine similarity (0–1)
- *   fired  — true if score >= threshold → caller should upgrade intent to CONCEPT_QUESTION
+ *   score - top-1 cosine similarity (0-1)
+ *   fired - true if score >= threshold, so the caller should upgrade the intent
  */
-export const probeAcademicSimilarity = async (query) => {
+export const checkSyllabusMatch = async (query) => {
   try {
     const embeddings = createQueryEmbeddings();
     const queryEmbedding = await embeddings.embedQuery(String(query || ''));
-    
+
     const pipeline = [
       {
         $vectorSearch: {
@@ -58,14 +44,13 @@ export const probeAcademicSimilarity = async (query) => {
         }
       }
     ];
-    
+
     const results = await Chunk.aggregate(pipeline);
     const score = results?.[0]?.score ?? 0;
-    const threshold = getThreshold();
+    const threshold = getSimilarityThreshold();
 
     return { score, fired: score >= threshold };
   } catch (err) {
-    // Fail open — probe failure must never crash or stall the pipeline
     console.warn('[SafetyNet] Probe failed, skipping override:', err.message);
     return { score: 0, fired: false };
   }
