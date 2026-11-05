@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { register, verifyEmail, login, logout, refreshToken, forgotPassword, resetPassword, googleAuth, googleCallback, getMe, exchangeOAuthCode, claimGuestProgress, issueGuestToken } from '../controllers/auth.controller.js';
 import { requireAuth } from '../auth/authMiddleware.js';
-import { authApiLimiter, globalApiLimiter, guestMintLimiter } from '../middlewares/rateLimiters.js';
+import { authApiLimiter, perStudentApiLimiter, guestMintLimiter } from '../middlewares/rateLimiters.js';
 
 const router = Router();
 
@@ -15,7 +15,7 @@ router.post('/reset-password', authApiLimiter, resetPassword);
 router.get('/me', requireAuth, getMe);
 router.get('/google', googleAuth);
 router.get('/google/callback', googleCallback);
-router.post('/exchange', globalApiLimiter, exchangeOAuthCode);
+router.post('/exchange', perStudentApiLimiter, exchangeOAuthCode);
 router.post('/guest', guestMintLimiter, issueGuestToken);
 router.post('/claim-guest-progress', requireAuth, claimGuestProgress);
 

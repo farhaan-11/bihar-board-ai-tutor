@@ -83,7 +83,21 @@ This does not block launch, but it must shape Stage 2 and 3 design.
 
 ---
 
-### R6. `globalApiLimiter` still keyed by raw IP — same cause as BUG-8, second location
+### ~~R6.~~ ✅ DONE 2026-11-05 — `globalApiLimiter` split into per-student + per-IP
+
+> **Fixed** on branch `fix-api-rate-limit-key`. The limiter was doing two jobs with
+> one key, so neither could be right. It is now `perStudentApiLimiter` (150/15min,
+> keyed by `req.callerId` from the new `auth/callerIdMiddleware.js` — token only, no
+> DB call) and `perIpApiLimiter` (2500/15min, keyed by IP). The 150 was not raised.
+> Identity-only keying was rejected: guest minting is 60/hour/IP, so it would have
+> lifted the app-wide ceiling ~60× on the three routes that have no limiter of their
+> own. Tests: `test:api-limiter-split`, `test:ask-limiter-identity`.
+>
+> **Found while fixing, not fixed:** `/api/v1/auth/exchange` mounts the app-level
+> limiter a *second* time at route level (`auth.routes.js:18`), so that one route
+> burns two counts per request. Harmless today, but it is a leftover — see R8.
+
+#### Original entry
 **Threshold:** ~10–15 concurrent students on one shared/NAT IP (school wifi, coaching centre)
 **Where:** `middlewares/rateLimiters.js` `globalApiLimiter` (150 req / 15 min per IP), mounted app-wide at `app.js:60` on every `/api` route
 
@@ -129,6 +143,23 @@ student out — that is a business call for the owner.
 becomes a Stage 1 item (Section F, student safety). Render (the only live backend)
 is checked and fine, so this stays here. Re-check the EC2 values before EC2 is
 ever activated.
+
+---
+
+### R8. `/api/v1/auth/exchange` is rate-limited twice
+**Threshold:** none — it is wrong today, just cheaply so.
+**Where:** `routes/auth.routes.js:18` mounts the app-level limiter again at route
+level, on a route that `app.js` already covers via `app.use('/api', ...)`.
+
+Express runs the same limiter twice in one request, and with one store and one key
+that means **two counts burned per call**. So this route effectively has half the
+budget of every other route. Found on 2026-11-05 while fixing R6; left alone then
+because that branch had one job.
+
+**Fix direction:** delete the route-level mount — the app-level one already applies.
+One line, but it is a behaviour change on the OAuth exchange path, so it wants its
+own branch and a quick check that Google login still completes.
+**Promotion condition:** promote if OAuth login ever starts returning 429s.
 
 ---
 

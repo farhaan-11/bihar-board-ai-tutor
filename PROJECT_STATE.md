@@ -198,7 +198,7 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 | ~~BUG-7~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `e0f9d69`). `getAnswerLanguageInstruction()` returned the Hindi/Devanagari instruction from an early `return` (`languageDetector.js:98`) sitting before the tail glossary-append (TASK-024), so only Hinglish answers ever got the `scienceGlossary.js` term vocabulary. Fix (Rule 4): `wantsGlossary` decided once, independent of the language branch; glossary appended to whichever base instruction is returned; Hindi header instructs Devanagari rendering. Verified by `npm run test:glossary-devanagari`. See `STAGE1_DONE.md` Section C. |
 | BUG-7b (noted, deferred) | Legacy `step6.generateResponse.js:160` calls `getAnswerLanguageInstruction(language.answerLanguage)` with no `intent` → glossary never applied on that path for any language. Path is dead in prod (`USE_INTENT_ROUTER=true`). Not a Section C bug; fold into a Stage 2 cleanup of the legacy tutor path. | `ask/step6.generateResponse.js:160` |
 | ~~BUG-8~~ | ✅ **Fixed** — merged to `main` 2026-09-09 (`--no-ff`, `1086b36`). The quiz limiters' inline identity-keyer is extracted to one shared `identityKeyGenerator` export; `askApiLimiter` now uses it (the 3 quiz limiters switched to the shared fn too — byte-identical behaviour). 30/min is unchanged but now measured per `user_<id>` / `guest_<id>`, falling back to IP only when neither is present — so it never has to grow with user count (Rule 4: fixed the key, not the cap). Verified by `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged. See `STAGE1_DONE.md` Section C. |
-| BUG-8b (noted, deferred → `BACKLOG.md` R6) | `globalApiLimiter` (150 req / 15 min, app-wide on every `/api` route at `app.js:60`) has the **same raw-IP defect** and, being lower-rate and route-wide, is the binding constraint for a classroom — so BUG-8 reduces but does not fully remove "one student blocks the class". Left out of BUG-8 on purpose: `globalApiLimiter` runs before `optionalAuth`, so `req.user` is unavailable there; the fix needs auth moved ahead of it (blast radius across all routes) and its own test cycle. **Must NOT be fixed by raising 150** (cap patch). **Blocking condition:** fix before onboarding any single-classroom / single-school-wifi group; fine for a cohort on separate home connections. | `middlewares/rateLimiters.js` `globalApiLimiter` |
+| ~~BUG-8b~~ | ✅ **Fixed** on branch `fix-api-rate-limit-key` (pending merge). The cause was one limiter doing two jobs with one key — per-student fairness *and* per-source flood protection. `globalApiLimiter` is replaced by `perStudentApiLimiter` (150 / 15 min, keyed by identity) and `perIpApiLimiter` (2500 / 15 min, keyed by IP). A new `auth/callerIdMiddleware.js` resolves the caller from the signed access/guest token with **no DB call**, so `optionalAuth` stays where it is and no route behaviour changes; `identityKeyGenerator` is now one line reading `req.callerId`, so identity is decided in exactly one place. The 150 was **not** raised (Rule 4). Keying by identity *alone* was rejected: guest tokens mint 60/hour/IP, so it would have multiplied the app-wide ceiling ~60× on `study-map` / `sessions` / `chapter-progress`, which have no limiter of their own. Verified by `npm run test:api-limiter-split` + updated `test:ask-limiter-identity`. |
 
 ---
 
@@ -267,7 +267,7 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 |---|---|
 | A — Repository hygiene | ✅ 5/5 |
 | B — Infrastructure | I2, I3 ✅ verified. I1 (Render paid), I4 (error monitoring), I5 (Redis paid) **deferred by owner** with accepted-risk notes in `STAGE1_DONE.md`. |
-| C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b) parked in `BACKLOG.md` R6. |
+| C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b / `BACKLOG.md` R6) fixed 2026-11-05 on `fix-api-rate-limit-key`, pending merge. |
 | D — Testing | ✅ **Complete.** D1✅ D2✅ D3✅ D4✅ D5✅. D4 done 2026-11-04 — full 67-case golden run against a live server + real LLM came back `✓ CLEAN`: **57 PASS / 10 WARN / 0 FAIL / 0 ERROR / 0 RATE-LIMIT**. All 9 intents green; the 10 WARN are quality-substring misses only (WARN, never fail, per the D3 decision). |
 | E — Real students | Not started. |
 | F — Legal & student safety | ✅ **Complete.** F1–F5 done; Section F code merged to `main` 2026-11-03 (`8ef3d4b`). Privacy + terms pages live, signup/guest consent, ADR-013 (minors data), deletion runbook (`docs/legal/DATA_DELETION_RUNBOOK.md`), Google OAuth consent screen reviewed (name/email scopes only, in production). |
@@ -278,9 +278,8 @@ Do not start Stage 2 work before every Stage 1 box is ticked.
 Stage 1 work left is **Section E** — a real-student pilot (10+ students for a week;
 only E3 adds their questions to the golden set). Suggested before E: revisit the
 owner-deferred **I4** (error monitoring) so backend crashes during the pilot are
-visible. **Before any single-classroom / school-wifi onboarding:** fix
-`globalApiLimiter` (BACKLOG R6 / BUG-8b) — same raw-IP cause, must not be patched
-by raising the number.
+visible. The single-classroom / school-wifi blocker (`globalApiLimiter`, BACKLOG
+R6 / BUG-8b) is **cleared** — fixed 2026-11-05 on `fix-api-rate-limit-key`.
 
 **Alongside Stage 1 (2026-10):** the AI Track work — the Python retrieval service
 in shadow mode and the local Docker compose stack — ran in parallel. It ticks no
