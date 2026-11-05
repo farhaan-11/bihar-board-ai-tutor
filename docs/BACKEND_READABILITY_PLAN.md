@@ -13,8 +13,8 @@ This replaces v1, which was comments-only and wrong.
 | Batch | State |
 |---|---|
 | 0 — Shared duplicates | ⏳ partly done — `utils/text.js` created, 1 of 5 `cleanText` copies removed (step1). Remaining: step7, chapterResolver, sourceFormatter, promptHelpers (`compactText`). Token helpers not started. |
-| **1 — The spine** | ✅ **done 2026-11-05.** 575 → 526 lines, comments 147 → 61 (26% → 11%), internal refs 6 → 0. 4 renames. Offline 4/4 green, golden set PASS, owner read all 4 files. |
-| 2 — The brain | ⬜ next |
+| **1 — The spine** | ✅ **done 2026-11-05, committed `79eb320`.** 575 → 526 lines, comments 147 → 61 (26% → 11%), internal refs 6 → 0. 4 renames. Offline 4/4 green, golden set PASS, owner read all 4 files. Not pushed. |
+| **2 — The brain** | ⬜ **START HERE.** `step4.decideRetrieval.js` (214) · `intentSafetyNet.js` (72) · `promptHelpers.js` (173). See §4 Batch 2 and §5 for the loop. |
 | 3 — Retrieval + answer | ⬜ |
 | 4 — `step7` alone | ⬜ |
 | 5 — Edges + file rename | ⬜ |
@@ -34,6 +34,23 @@ This replaces v1, which was comments-only and wrong.
   same function is not called two different ways in one file.
 - **4-line comment exception used once** in `askOrchestrator.js`, for the safety-net
   reason. Working as intended.
+
+### Known landmines waiting in Batch 2
+
+- `intentSafetyNet.js` header states three things that are false: it points at
+  `vectorStoreLoader.js` (that file does not exist), says Gemini embeddings are
+  primary (OpenAI is), and says the threshold is 0.65 matching `retriever.js` line 26
+  (the file's own default is 0.70, and the retriever constant is on line 31).
+- `step4.decideRetrieval.js` carries 7 `ADR-011` / `BUG-N` references and a JSDoc block
+  documenting parameters the function does not take (`currentStudyContext`, `memory`,
+  `history`, `lastTutorResponse`, `focusChapterPrompt`). The signature is only
+  `({ question }, { deciderHistory, language }, abortSignal)`.
+- `step4:148` holds a runtime string, not a comment:
+  `'Processed via structural normalizer normalization parameters.'` It ships inside
+  `decision.reason` in the API response. The frontend never reads `decision`, so it is
+  safe to change — but it is change type **E**, handled separately from comments.
+- `promptHelpers.js` has three word-salad JSDoc blocks (lines 102, 127, 149) and the
+  `compactText` copy of `cleanText` — the second of the five duplicates to remove.
 
 ### Carried to BACKLOG, not fixed here
 
