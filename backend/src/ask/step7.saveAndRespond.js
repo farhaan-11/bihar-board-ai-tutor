@@ -1,8 +1,4 @@
-/**
- * step7.saveAndRespond.js — Step 7 of the Ask API flow
- * * UPGRADED PRODUCTION-GRADE STATE COMMITER
- * * CHANGES: Integrated nested state mutations via updateChatSessionState.
- */
+// Step 7: saves the turn to the database and builds the response payload for the client.
 
 import { addChatMessages } from '../services/chatHistory.service.js';
 import { updateChatSession, updateChatSessionState, setSessionTitleIfDefault, setFirstQuestionIfEmpty } from '../services/chatSession.service.js';
@@ -10,17 +6,15 @@ import { upsertChapterProgress, setChapterAwaitingQuiz, logStudyEvent } from '..
 import { env } from '../config/env.js';
 import redis from '../config/redisClient.js';
 import { logTurnSummary, recordIntentSample, logIntentAggregates } from '../utils/tokenLogger.js';
+import { cleanText } from '../utils/text.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/**
- * Shared hardening wrapper for ChapterProgress writes (the single source of truth for
- * topic progress — see FOCUS_MODE_PROGRESS_FIX_PLAN.md). A silent failure here would mean
- * the student's advance is recorded nowhere, so: one retry after a short delay, and a
- * distinctly visible error log (not a silent swallow) if it still fails.
- */
+// ChapterProgress is the single source of truth for topic progress, so a lost write means
+// the student's advance is saved nowhere. Retry once after a short delay, and log loudly
+// (not silently) if it still fails.
 const withRetry = async (fn, label) => {
   try {
     return await fn();
@@ -36,19 +30,17 @@ const withRetry = async (fn, label) => {
   }
 };
 
-const cleanText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
-
 const VALID_LEARNING_MODES = new Set(['idle', 'lesson', 'doubt', 'quiz']);
 
-// Pipeline-generated titles that should never become a session label in the sidebar.
+// Titles the pipeline makes itself. They should never become a session label in the sidebar.
 const SYSTEM_TITLES = new Set(['Chapter Complete!', 'Quiz Time!']);
 
-// Phase 3 — Session Integrity Guard.
-// UNSAFE_OR_ABUSIVE excluded from drift — abuse is tracked by its own abuseCount field.
+// Study turns reset the drift streak. Drift turns count toward the drift block.
+// UNSAFE_OR_ABUSIVE is in neither: abuse has its own abuseCount.
 const ACADEMIC_INTENTS = new Set(['CONCEPT_QUESTION', 'EXPLAIN_MORE', 'NEXT_STEP', 'CHOOSE_COURSE']);
 const DRIFT_INTENTS    = new Set(['GREETING', 'OUT_OF_CONTEXT']);
 
-// Allowed operational state properties inside our new ChatSession layout
+// The fields the LLM may write when the intent has no entry in INTENT_MEMORY_WHITELIST.
 const ALLOWED_STATE_FIELDS = [
   'status', 'learningMode', 'currentSubjectId', 'currentSectionId',
   'currentChapterId', 'abuseCount', 'answerLanguage',
@@ -57,26 +49,24 @@ const ALLOWED_STATE_FIELDS = [
   'consecutiveErrors', 'lastErrorAt'
 ];
 
-// When USE_INTENT_ROUTER=true, each intent only writes the fields it is
-// responsible for. Everything else is either set by step7 code directly,
-// or must never come from the LLM at all.
+// The memoryUpdate fields the LLM may write, per intent (used when USE_INTENT_ROUTER=true).
+// Everything else is set by this file's code, or must never come from the LLM.
+// CHOOSE_COURSE writes nothing: the chapter comes from the request (step2), learningMode is set by
+// code, and the focus/global sync in saveAndRespond overwrote its old fields anyway.
 export const INTENT_MEMORY_WHITELIST = {
   GREETING:          [],
   EMOTIONAL_SUPPORT: [],
   OUT_OF_CONTEXT:    [],
   UNSAFE_OR_ABUSIVE: [],
-  CHOOSE_COURSE:     [],                                          // BUG-3: chapter context comes from the request chapterId (step2), never the LLM; learningMode is code-managed. The old entry's fields were all overwritten by the force-sync block below.
-  EXPLAIN_MORE:      ['lastDoubtTopic', 'lastDoubtQuestion'],     // NOT lastTopic — prevents drift
+  CHOOSE_COURSE:     [],
+  EXPLAIN_MORE:      ['lastDoubtTopic', 'lastDoubtQuestion'],     // not lastTopic, so it cannot cause drift
   CONCEPT_QUESTION:  ['lastTopic', 'lastDoubtTopic', 'lastDoubtQuestion', 'learningMode'],
-  NEXT_STEP:         ['lastTopic', 'learningMode'],               // currentTopicId managed by step7 code
-  EXAM_INFO:         [],                                          // deterministic lookup — LLM writes nothing
+  NEXT_STEP:         ['lastTopic', 'learningMode'],               // currentTopicId is saved by code
+  EXAM_INFO:         [],                                          // plain lookup, the LLM writes nothing
 };
 
-/**
- * Sanitizes the LLM's memoryUpdate to match the new strict chatState machine.
- * When intent is provided and in the whitelist, only the fields allowed for that
- * intent are kept. Otherwise falls back to the broad ALLOWED_STATE_FIELDS list.
- */
+// Keeps only the memoryUpdate fields this intent may write, with text values cleaned.
+// An intent with no whitelist entry falls back to ALLOWED_STATE_FIELDS.
 export const sanitizeMemoryUpdate = ({ memoryUpdate, intent }) => {
   const cleanUpdate = {};
   const allowedFields = Object.hasOwn(INTENT_MEMORY_WHITELIST, intent)
@@ -89,14 +79,13 @@ export const sanitizeMemoryUpdate = ({ memoryUpdate, intent }) => {
         ? null
         : memoryUpdate[field];
 
-      // Safe string normalization for scalar types
       if (typeof cleanValue === 'string') {
         cleanUpdate[field] = cleanText(cleanValue);
       } else {
         cleanUpdate[field] = cleanValue;
       }
 
-      // Enforce learningMode boundaries safely
+      // An unknown learningMode becomes 'idle'.
       if (field === 'learningMode' && cleanUpdate[field] && !VALID_LEARNING_MODES.has(cleanUpdate[field])) {
         cleanUpdate[field] = 'idle';
       }
@@ -106,9 +95,7 @@ export const sanitizeMemoryUpdate = ({ memoryUpdate, intent }) => {
   return cleanUpdate;
 };
 
-/**
- * Removes undefined fields to keep MongoDB queries compliant.
- */
+// MongoDB updates must not contain undefined values.
 const removeUndefinedFields = (data) => {
   const cleanData = {};
   for (const [key, value] of Object.entries(data)) {
@@ -117,23 +104,15 @@ const removeUndefinedFields = (data) => {
   return cleanData;
 };
 
-// Intents that must never leave the student without a way to advance the
-// current focus chapter — LLM-authored chips for these intents are never
-// guaranteed to include a "next_topic" action (proven: CONCEPT_QUESTION's
-// related_concept follow-ups never do), so it's injected here, in code,
-// instead of trusted to prompt compliance. See FOCUS_MODE_PLAN.md.
+// For these intents the LLM's own chips can leave the student with no way to advance the
+// chapter (CONCEPT_QUESTION's follow-ups never include one). So code adds the "next_topic"
+// chip, instead of trusting the prompt to.
 const GUARANTEED_NEXT_TOPIC_INTENTS = new Set(['CONCEPT_QUESTION', 'EXPLAIN_MORE', 'EXAM_INFO']);
 const DEFAULT_NEXT_TOPIC_ACTION = { type: 'next_topic', label: 'Aage badhein' };
 
-/**
- * Sanitizes action labels for interface cards rendering, and — in Focus Mode —
- * guarantees a "next_topic" chip is present for intents where the LLM's own
- * suggestions can otherwise leave the student with no way to advance the
- * chapter (the "loop trap" bug). NEXT_STEP only gets the guarantee when
- * nextTopicSignal is truthy — CHAPTER_COMPLETE/no_chapter responses also
- * carry intent 'NEXT_STEP' but must NOT get an "Aage badhein" chip (there is
- * no next topic in that state).
- */
+// Cleans the action chips. In Focus Mode it also guarantees a "next_topic" chip for the intents
+// above. NEXT_STEP only gets it when nextTopicSignal is set: the chapter-complete and no-chapter
+// replies also have intent NEXT_STEP, and there is no next topic then.
 const sanitizeSuggestedActions = (actions, { intent, studyMode, nextTopicSignal } = {}) => {
   const cleaned = Array.isArray(actions)
     ? actions
@@ -152,72 +131,49 @@ const sanitizeSuggestedActions = (actions, { intent, studyMode, nextTopicSignal 
   const hasNextTopic = cleaned.some((action) => action.type === 'next_topic');
 
   const withGuarantee = (needsGuarantee && !hasNextTopic)
-    ? [DEFAULT_NEXT_TOPIC_ACTION, ...cleaned] // prepend — must survive the slice(0, 4) cap below
+    ? [DEFAULT_NEXT_TOPIC_ACTION, ...cleaned] // first, so it survives the slice(0, 4) below
     : cleaned;
 
   return withGuarantee.slice(0, 4);
 };
 
-/**
- * Formats data snapshots back to the client interface layer.
- */
+// The session part of the response. Topic progress is not here, it is in payload.chapterProgress.
 const buildSessionPayload = (sessionId, updatedSession) => {
   const chatState = updatedSession?.chatState || {};
   return {
     sessionId,
     title: updatedSession?.title || 'New Chat',
     status: chatState.status || 'active',
-    isLocked: chatState.status === 'exhausted', // single source of truth — no separate isLocked field
+    isLocked: chatState.status === 'exhausted', // there is no separate isLocked field
     learningMode: chatState.learningMode || 'idle',
     lastTopic: chatState.lastTopic || null,
     lastSubject: chatState.currentSubjectId || null,
     lastSection: chatState.currentSectionId || null,
     lastChapterId: chatState.currentChapterId || null,
-    // currentTopicId/completedTopicIds intentionally NOT here — ChapterProgress
-    // is the single source of truth for topic progress now; see payload.chapterProgress.
     sessionType: updatedSession?.sessionType || 'global',
     messageCount: chatState.messageCount || 0,
     totalTokensUsed: updatedSession?.totalTokensUsed ?? 0,
   };
 };
 
-/**
- * Step 7: Commits transaction updates to DB and responds to client.
- */
-export const saveAndRespond = async (
-  { question, studyMode, focusChapter },
-  { sessionId, chatState, chapterProgress },
-  { language, driftSignal },
-  decision,
-  { retrieval, retrievedContext, sources, nextTopicSignal, lastRetrievalQuery, isOutOfFocusAnswer },
-  response,
-  userId = null,
-  tokenUsage = 0,
-  guestId = null
-) => {
-  if (isDev) console.log(`[Step 7 Commiting] Writing updates atomically for Session ID: ${sessionId}`);
-
-  // Step 7a: Sanitize the state updates generated during the conversation turn.
-  // intent is passed so the per-intent whitelist (INTENT_MEMORY_WHITELIST) is used
-  // when USE_INTENT_ROUTER=true. Falls back to ALLOWED_STATE_FIELDS for legacy path.
+// Builds the chatState changes for this turn: what to $set, and what to $inc.
+const buildStateUpdates = ({ decision, response, intent, studyMode, chatState, language, sources, lastRetrievalQuery, isOutOfFocusAnswer }) => {
+  // The intent picks the per-intent whitelist (USE_INTENT_ROUTER=true).
+  // Without one, the broad ALLOWED_STATE_FIELDS list is used (legacy path).
   const stateUpdates = sanitizeMemoryUpdate({
     memoryUpdate: response.memoryUpdate,
     intent: decision?.intent,
   });
 
-  // Note: NEXT_STEP topic advance is no longer written to chatState/stateUpdates —
-  // ChapterProgress (below) is the single source of truth for currentTopicId/completedTopicIds.
+  // The NEXT_STEP topic advance is saved in ChapterProgress, not in chatState.
 
-  // Save the exact retrieval query used — code-controlled, never from LLM memoryUpdate.
-  // CONCEPT_QUESTION and NEXT_STEP are the only intents that retrieve content for teaching.
-  // Guard: sources.length > 0 ensures we only save queries that actually returned content.
-  // !isOutOfFocusAnswer excludes the out-of-focus redirect case — that turn found sources
-  // globally but never taught the student anything (it declined with "yeh doosre chapter
-  // mein hai"), so its query must not be remembered as "the last thing genuinely explained"
-  // — otherwise a later EXPLAIN_MORE would reuse it and could teach the wrong chapter.
-  const _intent = decision?.intent;
+  // Save the query that was used. It comes from code, never from the LLM. Only turns that taught
+  // from retrieved content count: CONCEPT_QUESTION and NEXT_STEP, with sources found.
+  // Skip the out-of-focus redirect: it found sources but taught nothing, and a later EXPLAIN_MORE
+  // would reuse its query and teach the wrong chapter.
+  const rawIntent = decision?.intent;
   if (
-    ['CONCEPT_QUESTION', 'NEXT_STEP'].includes(_intent) &&
+    ['CONCEPT_QUESTION', 'NEXT_STEP'].includes(rawIntent) &&
     lastRetrievalQuery &&
     sources?.length > 0 &&
     !isOutOfFocusAnswer
@@ -225,13 +181,12 @@ export const saveAndRespond = async (
     stateUpdates.lastRetrievalQuery = lastRetrievalQuery;
   }
 
-  // Save the last real study explanation — code-controlled, never from LLM memoryUpdate.
-  // Used by EXPLAIN_MORE (variation mandate) and CONCEPT_QUESTION (anti-repetition rule)
-  // so both prompts compare against the actual study explanation, not whatever Zuno last said.
-  // Guards: answered status + retrieved content used + non-empty answer text + not an
-  // out-of-focus redirect (see lastRetrievalQuery guard above — same reasoning).
+  // Save the last real study explanation. It comes from code, never from the LLM.
+  // EXPLAIN_MORE and CONCEPT_QUESTION compare against it, so they do not repeat themselves.
+  // Only for an answered turn with retrieved content and a non-empty answer, and not for
+  // an out-of-focus redirect (same reason as above).
   const isRealStudyAnswer = (
-    ['CONCEPT_QUESTION', 'EXPLAIN_MORE', 'NEXT_STEP'].includes(_intent) &&
+    ['CONCEPT_QUESTION', 'EXPLAIN_MORE', 'NEXT_STEP'].includes(rawIntent) &&
     response?.status === 'answered' &&
     sources?.length > 0 &&
     response?.answer?.trim() &&
@@ -241,38 +196,31 @@ export const saveAndRespond = async (
     stateUpdates.lastStudyResponse = response.answer.trim().slice(0, 800);
   }
 
-  // Successful response — provider is working. Reset error tracking.
+  // The provider worked, so reset the error count.
   stateUpdates.consecutiveErrors = 0;
   stateUpdates.lastErrorAt = null;
 
-  // STB-008: Force sync chapter fields — never rely on LLM memoryUpdate for these.
-  // LLM prompts don't know/return chapter IDs, so we always write them from chatState
-  // (which step2 correctly sets from the request's focusChapter data).
+  // The chapter fields always come from chatState (step2 sets it from the request), never from
+  // the LLM, which does not know chapter ids. Global mode clears them. Focus mode saves them,
+  // so the session can be restored after a refresh.
   if (studyMode === 'global') {
     stateUpdates.learningMode = 'idle';
     stateUpdates.currentSubjectId = null;
     stateUpdates.currentSectionId = null;
     stateUpdates.currentChapterId = null;
   } else if (studyMode === 'focus') {
-    // Force-persist the chapter context so session restore after refresh works.
-    // Symmetric to the global-mode clear above.
     stateUpdates.currentSubjectId = chatState.currentSubjectId || null;
     stateUpdates.currentSectionId = chatState.currentSectionId || null;
     stateUpdates.currentChapterId = chatState.currentChapterId || null;
   }
 
-  // Automatically update dynamic tracking metrics on user interaction
+  // Save the language the answer was written in.
   if (response.responseMode) {
     stateUpdates.answerLanguage = language.answerLanguage;
   }
 
-  // sessionType derived from studyMode — set once on creation, immutable after.
-  const sessionType = studyMode === 'focus' ? 'focus' : 'global';
-
-  // Phase 3 — Session Integrity Guard: update drift counters in the same atomic op.
-  // Academic turns reset the consecutive streak. Drift turns increment both counters.
-  // UNSAFE_OR_ABUSIVE is excluded — abuse is tracked by its own abuseCount field.
-  const intent = decision?.intent ?? 'CONCEPT_QUESTION';
+  // Drift counters, saved in the same atomic write. A study turn resets the streak.
+  // A drift turn adds to both counters.
   const chatStateInc = { messageCount: 1 };
   if (ACADEMIC_INTENTS.has(intent)) {
     stateUpdates.consecutiveNonAcademicTurns = 0;
@@ -285,49 +233,34 @@ export const saveAndRespond = async (
     if (isDev) console.log(`[Drift] ${intent} → consecutive ${prevConsec} → ${prevConsec + 1} | total ${prevTotal} → ${prevTotal + 1}`);
   }
 
-  // Single atomic MongoDB op: chatState $set + messageCount $inc + totalTokensUsed $inc + $setOnInsert immutables.
-  // guestId is stamped here (from the ask pipeline identity) so a guest's chat
-  // session can be claimed onto their account at login — see GUEST_SERVERSIDE_PLAN.md.
-  const updatedSession = await updateChatSession(
-    sessionId,
-    {
-      chatStateSet: removeUndefinedFields(stateUpdates),
-      chatStateInc,
-      topLevelInc: { totalTokensUsed: tokenUsage },
-    },
-    { userId, guestId, sessionType }
-  );
+  return { stateUpdates, chatStateInc };
+};
 
-  // ─── Cross-session chapter progress write (single source of truth) ──────
-  // ChapterProgress owns currentTopicId/completedTopicIds — chatState no longer
-  // carries these fields at all. The prior state comes from `chapterProgress`
-  // (loaded fresh in step2), and nextTopicSignal (from step5) tells us whether
-  // NEXT_STEP advanced the pointer this turn. Both writes are hardened with a
-  // bounded retry — see withRetry() — because a silent failure here now means
-  // the advance is recorded nowhere (no chatState backup copy anymore).
+// Writes the ChapterProgress for a focus-mode turn and returns the saved document (or null).
+// ChapterProgress owns currentTopicId and completedTopicIds (chatState no longer has them).
+// The prior state comes from `chapterProgress` (loaded in step2). nextTopicSignal (from step5)
+// says whether NEXT_STEP moved to a new topic this turn. Both writes use withRetry, because a
+// failed write is saved nowhere else.
+const saveChapterProgress = async ({ studyMode, focusChapter, sessionId, chatState, chapterProgress, retrievedContext, nextTopicSignal, intent, userId, guestId }) => {
   let chapterProgressDoc = null;
   if (studyMode === 'focus' && chatState.currentChapterId) {
     const chapterId  = chatState.currentChapterId;
     const isComplete = retrievedContext === 'CHAPTER_COMPLETE';
 
     if (isComplete) {
-      // CHAPTER COMPLETE — critical milestone, must not be lost silently.
-      // Phase 3: don't auto-complete — move to awaiting_quiz. The chapter only
-      // reaches 'completed' once the gate quiz is passed (handleGateQuizResult
-      // in quizSubmitter.js).
+      // Chapter finished: a milestone that must not be lost silently. It becomes 'awaiting_quiz'
+      // and only reaches 'completed' when the gate quiz is passed (handleGateQuizResult in quizSubmitter.js).
       chapterProgressDoc = await withRetry(
         () => setChapterAwaitingQuiz(userId, guestId, chapterId, chapterProgress?.currentTopicId),
         'setChapterAwaitingQuiz'
       );
       logStudyEvent(userId, guestId, sessionId, chapterId, 'chapter_completed');
     } else {
-      // Regular focus turn — upsert progress
       const priorCurrentTopicId = chapterProgress?.currentTopicId ?? null;
       const priorCompleted      = chapterProgress?.completedTopicIds ?? [];
 
-      // If NEXT_STEP resolved a new topic this turn, advance the pointer and
-      // record the topic just finished. $addToSet in upsertChapterProgress is
-      // idempotent, so a retry replaying the same payload is always safe.
+      // If NEXT_STEP found a new topic, move the pointer and record the topic just finished.
+      // $addToSet in upsertChapterProgress is idempotent, so a retry is safe.
       const newCurrentTopicId = nextTopicSignal ? nextTopicSignal.topicId : priorCurrentTopicId;
       const newlyCompleted = (nextTopicSignal && priorCurrentTopicId)
         ? [...priorCompleted, priorCurrentTopicId]
@@ -343,50 +276,55 @@ export const saveAndRespond = async (
           subjectId:         chatState.currentSubjectId,
           sectionId:         chatState.currentSectionId,
           chapterTitle,
-          // ISSUE-1 (FOCUS_MODE_PROGRESS_FIX_PLAN.md): separate "engagement" counter,
-          // never blended into completedTopicIds/progressPercent above.
+          // Counts doubts and explain-more turns. Kept apart from completedTopicIds and progressPercent.
           intent,
         }),
         'upsertChapterProgress'
       );
 
-      // Log topic_completed event when NEXT_STEP advances to a new topic
       if (nextTopicSignal) {
         logStudyEvent(userId, guestId, sessionId, chapterId, 'topic_completed', {
           topicId:     priorCurrentTopicId, // the one just completed
           nextTopicId: nextTopicSignal.topicId,
         });
       }
-      // Log doubt events for CONCEPT_QUESTION turns (fire-and-forget, already in service)
     }
   }
+  return chapterProgressDoc;
+};
 
-  // Increment guest turn counter after confirmed DB write — non-critical, fail open.
+// Counts this guest turn in Redis, after the DB write worked.
+// Not critical, so a failure is only logged.
+const countGuestTurn = async (guestId) => {
   if (guestId) {
     try {
       const key = `guest_turns:${guestId}`;
       const newCount = await redis.incr(key);
       if (newCount === 1) {
-        // First ever turn — set 30-day TTL so the counter self-expires
+        // First turn ever: the counter expires after 30 days, so it cleans itself up.
         await redis.expire(key, 30 * 24 * 60 * 60);
       }
     } catch (err) {
       console.error('[Step7] Guest counter increment failed (non-critical):', err.message);
     }
   }
+};
 
-  // P2-T4: Check if this turn pushed the session over the token limit.
+// Logs the turn (decider and tutor token usage, session health), then locks the session
+// if this turn pushed it over the token limit.
+const logTurnAndLockIfExhausted = async ({ sessionId, userId, decision, response, intent, tokenUsage, updatedSession, driftSignal }) => {
   const newTotal = updatedSession?.totalTokensUsed ?? 0;
   const turnNumber = updatedSession?.chatState?.messageCount ?? 1;
 
-  // STEP-0: Turn summary — shows decider + tutor breakdown and session health.
+  const deciderTokens = decision?.tokenBreakdown ?? { input: 0, output: 0, total: decision?.tokenUsage ?? 0 };
+  const tutorTokens   = response?.tokenBreakdown ?? { input: 0, output: 0, total: response?.tokenUsage ?? 0 };
   logTurnSummary({
     sessionId,
     turnNumber,
     intent:     decision?.intent ?? 'UNKNOWN',
     overridden: decision?._overridden ?? false,
-    decider: decision?.tokenBreakdown ?? { input: 0, output: 0, total: decision?.tokenUsage ?? 0 },
-    tutor:   response?.tokenBreakdown ?? { input: 0, output: 0, total: response?.tokenUsage ?? 0 },
+    decider: deciderTokens,
+    tutor:   tutorTokens,
     sessionTotal: newTotal,
     sessionLimit: env.sessionTokenLimit,
     driftSignal,
@@ -400,20 +338,23 @@ export const saveAndRespond = async (
       if (updatedSession.chatState) updatedSession.chatState.status = 'exhausted';
       if (isDev) console.log(`[Step 7] Session locked — totalTokensUsed: ${newTotal} >= limit: ${env.sessionTokenLimit}`);
     } catch {
-      // Non-critical — session will be locked on next DB read anyway
+      // Not critical: the session gets locked on the next DB read anyway.
     }
   }
+};
 
-  // Save first student question as sidebar preview — only fires on turn 1 (messageCount just became 1).
-  // setFirstQuestionIfEmpty is a no-op on all subsequent turns (null-filter guard).
+// Saves what the sidebar shows for this session: the first question, and an auto-title.
+const saveSidebarLabels = async (updatedSession, { sessionId, question, response }) => {
+  // Save the first question as the sidebar preview. Only on turn 1:
+  // setFirstQuestionIfEmpty does nothing after that.
   if ((updatedSession?.chatState?.messageCount ?? 0) === 1) {
-    setFirstQuestionIfEmpty(sessionId, question).catch(() => {}); // non-critical, fire-and-forget
+    setFirstQuestionIfEmpty(sessionId, question).catch(() => {}); // not critical, fire and forget
   }
 
-  // P2-T3: Auto-title using the answer heading already computed by step6 — zero extra LLM cost.
-  // Only fires when: (a) session still has the default 'New Chat' title, (b) this is a real
-  // study answer (study_tutor + answered), and (c) the title is not a system-generated label.
-  // The { title: 'New Chat' } condition inside setSessionTitleIfDefault makes this race-safe.
+  // Auto-title from the answer heading step6 already made, so there is no extra LLM call.
+  // Only when the title is still 'New Chat', the reply is an answered study_tutor one, and the
+  // heading is not a system label. The { title: 'New Chat' } condition inside
+  // setSessionTitleIfDefault keeps this safe if two requests race.
   if (
     updatedSession.title === 'New Chat' &&
     response.responseMode === 'study_tutor' &&
@@ -423,14 +364,17 @@ export const saveAndRespond = async (
   ) {
     try {
       await setSessionTitleIfDefault(sessionId, response.title.trim());
-      updatedSession.title = response.title.trim(); // sync in-memory so buildSessionPayload sees it
+      updatedSession.title = response.title.trim(); // so buildSessionPayload sees the new title
     } catch {
-      // Non-critical — title stays 'New Chat', main pipeline is unaffected
+      // Not critical: the title stays 'New Chat'.
     }
   }
+};
 
-  // Step 7b: Assemble the standardized outer structural response contract
-  const answerPayload = {
+// Builds the response payload for the client.
+const buildAnswerPayload = ({ response, decision, studyMode, question, language, sources, retrieval, nextTopicSignal, sessionId, updatedSession, chapterProgressDoc }) => {
+  const rawIntent = decision?.intent;
+  return {
     status: response.status,
     intent: response.responseMode,
     responseMode: response.responseMode,
@@ -442,14 +386,13 @@ export const saveAndRespond = async (
     sections: response.sections,
     answer: response.answer,
     sources,
-    suggestedActions: sanitizeSuggestedActions(response.suggestedActions, { intent: _intent, studyMode, nextTopicSignal }),
+    suggestedActions: sanitizeSuggestedActions(response.suggestedActions, { intent: rawIntent, studyMode, nextTopicSignal }),
     retrieval: retrieval
       ? { question: retrieval.question, returnedCount: retrieval.debug?.returnedCount || 0 }
       : null,
     decision,
     session: buildSessionPayload(sessionId, updatedSession),
-    // Cross-session chapter progress snapshot — frontend uses this to update
-    // FocusProgressHeader without a separate API call.
+    // The frontend updates the progress header from this, without another API call.
     chapterProgress: chapterProgressDoc ? {
       progressPercent:   chapterProgressDoc.progressPercent,
       currentTopicId:    chapterProgressDoc.currentTopicId,
@@ -457,14 +400,16 @@ export const saveAndRespond = async (
       totalCoreTopics:   chapterProgressDoc.totalCoreTopics,
       status:            chapterProgressDoc.status,
       isChapterComplete: chapterProgressDoc.status === 'completed',
-      // ISSUE-1: separate engagement stat — never blended into progressPercent above.
+      // Engagement stats, kept apart from progressPercent.
       totalDoubtsAsked:      chapterProgressDoc.totalDoubtsAsked || 0,
       totalExplainMoreCount: chapterProgressDoc.totalExplainMoreCount || 0,
     } : null,
   };
+};
 
-  // Step 7c: Append historical text prose into the isolated history bank log
-  await addChatMessages(sessionId, [
+// Saves the student's question and Zuno's answer to the chat history.
+const saveChatMessages = ({ sessionId, question, studyMode, focusChapter, answerPayload, sources, userId }) =>
+  addChatMessages(sessionId, [
     {
       role: 'student',
       text: question,
@@ -486,6 +431,67 @@ export const saveAndRespond = async (
       },
     },
   ], userId);
+
+// Step 7: saves the turn to the database and returns the payload for the client.
+// input, session and context are what steps 1, 2 and 3 returned.
+// retrieved is what step 5 returned, response is what step 6 returned.
+export const saveAndRespond = async ({
+  input,
+  session,
+  context,
+  decision,
+  retrieved,
+  response,
+  userId = null,
+  tokenUsage = 0,
+  guestId = null,
+}) => {
+  const { question, studyMode, focusChapter } = input;
+  const { sessionId, chatState, chapterProgress } = session;
+  const { language, driftSignal } = context;
+  const { retrieval, retrievedContext, sources, nextTopicSignal, lastRetrievalQuery, isOutOfFocusAnswer } = retrieved;
+
+  if (isDev) console.log(`[Step 7 Commiting] Writing updates atomically for Session ID: ${sessionId}`);
+
+  const intent = decision?.intent ?? 'CONCEPT_QUESTION';
+
+  const { stateUpdates, chatStateInc } = buildStateUpdates({
+    decision, response, intent, studyMode, chatState, language, sources, lastRetrievalQuery, isOutOfFocusAnswer,
+  });
+
+  // Set when the session is first created, never changed after.
+  const sessionType = studyMode === 'focus' ? 'focus' : 'global';
+
+  // One atomic MongoDB write: chatState $set, messageCount and totalTokensUsed $inc, and the
+  // immutable fields on insert. guestId is saved here, so a guest's chat can be claimed onto
+  // their account at login.
+  const updatedSession = await updateChatSession(
+    sessionId,
+    {
+      chatStateSet: removeUndefinedFields(stateUpdates),
+      chatStateInc,
+      topLevelInc: { totalTokensUsed: tokenUsage },
+    },
+    { userId, guestId, sessionType }
+  );
+
+  const chapterProgressDoc = await saveChapterProgress({
+    studyMode, focusChapter, sessionId, chatState, chapterProgress, retrievedContext, nextTopicSignal, intent, userId, guestId,
+  });
+
+  await countGuestTurn(guestId);
+
+  await logTurnAndLockIfExhausted({
+    sessionId, userId, decision, response, intent, tokenUsage, updatedSession, driftSignal,
+  });
+
+  await saveSidebarLabels(updatedSession, { sessionId, question, response });
+
+  const answerPayload = buildAnswerPayload({
+    response, decision, studyMode, question, language, sources, retrieval, nextTopicSignal, sessionId, updatedSession, chapterProgressDoc,
+  });
+
+  await saveChatMessages({ sessionId, question, studyMode, focusChapter, answerPayload, sources, userId });
 
   if (isDev) console.log('[Step 7 Complete] Database sync finalized successfully. Releasing payload.');
   return answerPayload;

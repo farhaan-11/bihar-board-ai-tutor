@@ -119,10 +119,15 @@ export const askQuestion = async (
       // The stream is already open by now, so this has to go out through onComplete.
       // A plain return would be swallowed by the controller's `if (streamStarted) return;`.
       try {
-        const savedPayload = await saveAndRespond(
-          input, session, context, capDecision, capRetrieval, capResponse,
-          userId, decision.tokenUsage || 0, guestId
-        );
+        const savedPayload = await saveAndRespond({
+          input, session, context,
+          decision:   capDecision,
+          retrieved:  capRetrieval,
+          response:   capResponse,
+          userId,
+          tokenUsage: decision.tokenUsage || 0,
+          guestId,
+        });
         streamCallbacks?.onComplete?.(savedPayload);
         return savedPayload;
       } catch {
@@ -165,10 +170,10 @@ export const askQuestion = async (
 
     const response = await generateResponse(input, context, decision, retrieval, streamCallbacks, abortSignal);
     const tokenUsage = (decision.tokenUsage || 0) + (response.tokenUsage || 0);
-    const finalPayload = await saveAndRespond(
-      input, session, context, decision, retrieval, response,
-      userId, tokenUsage, guestId
-    );
+    const finalPayload = await saveAndRespond({
+      input, session, context, decision, response, userId, tokenUsage, guestId,
+      retrieved: retrieval,
+    });
 
     if (streamCallbacks?.onComplete) {
       streamCallbacks.onComplete(finalPayload);
