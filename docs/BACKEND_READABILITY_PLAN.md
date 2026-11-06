@@ -8,16 +8,16 @@ This replaces v1, which was comments-only and wrong.
 ## STATUS — read this first, update it at the end of every batch
 
 **Branch:** `backend-readability-refactor`
-**Last updated:** 2026-11-05 (after Batch 3)
+**Last updated:** 2026-11-05 (after Batch 4)
 
 | Batch | State |
 |---|---|
-| 0 — Shared duplicates | ⏳ partly done, finished file-by-file as each batch touches the file. `cleanText`: 2 of 5 copies removed (step1, promptHelpers `compactText`). Remaining: step7, chapterResolver, sourceFormatter. Token helper: **done**, `utils/tokenUsage.js` is the only copy (step4, step6 and intentRouter all import it). |
+| 0 — Shared duplicates | ⏳ partly done, finished file-by-file as each batch touches the file. `cleanText`: 3 of 5 copies removed (step1, promptHelpers `compactText`, step7). Remaining: `rag/sourceFormatter.js` (Batch 5) and `curriculum/chapterResolver.js` (not in any batch's file list, add it to Batch 5). Token helper: **done**, `utils/tokenUsage.js` is the only copy (step4, step6 and intentRouter all import it). |
 | **1 — The spine** | ✅ **done 2026-11-05, committed `79eb320`.** 575 → 526 lines, comments 147 → 61 (26% → 11%), internal refs 6 → 0. 4 renames. Offline 4/4 green, golden set PASS, owner read all 4 files. Not pushed. |
 | **2 — The brain** | ✅ **done 2026-11-05.** 459 → 364 lines (+24 new `tokenUsage.js`), comment lines 144 → 65 (~18%, the measured "why" notes were kept on purpose), internal refs → 0. 3 renames. Offline 4/4 green, golden set PASS (owner ran it), owner read all 3 files. |
 | **3 — Retrieval + answer** | ✅ **done 2026-11-05.** 1,020 → 862 lines, comment lines 213 → 113, internal refs → 0. `noContent()` in step5, token helper and `normalizeSections` duplicates removed, `normalizedIntent` gone. Offline 4/4 + shadow test green, old-vs-new compared on every branch that runs without the DB or an LLM. Golden set PASS (owner ran it), owner read all 3 files. |
-| **4 — `step7` alone** | ⬜ **START HERE.** `step7.saveAndRespond.js` (491). See §4 Batch 4. Own session. |
-| 5 — Edges + file rename | ⬜ |
+| **4 — `step7` alone** | ✅ **done 2026-11-05.** `saveAndRespond` 306 → 61 lines, split into 7 helpers, 9 positional parameters → one options object (2 call sites in `askOrchestrator`). File 491 → 498 lines (the helpers add signatures), comment lines 117 → 77, internal refs 13 → 0, `_intent` → `rawIntent`, `cleanText` copy removed. Checked with a throwaway stub harness (46 scenarios, old vs new: every call, its order and arguments, console logs, returned payload) and a second one for the 2 call sites. Offline 4/4, `test-choose-course-memory`, shadow test green. Golden set PASS (owner ran it). |
+| **5 — Edges + file rename** | ⬜ **START HERE.** `rag/retriever.js`, `rag/retriever.config.js`, `rag/sourceFormatter.js`, `curriculum/chapterResolver.js` (last `cleanText` copy), `models/chatSession.model.js`, `models/chapterProgress.model.js`, `app.js`, `server.js`, `controllers/ask.controller.js`. Then `rag/geminiEmbeddings.js` → `rag/embeddings.js` as its own commit. See §4 Batch 5. |
 | 6 — Auth (optional) | ⬜ |
 
 ### Decisions taken while working — do not re-litigate
@@ -56,23 +56,38 @@ This replaces v1, which was comments-only and wrong.
   literal had (`nextTopicSignal: null` vs absent vs an object matters, so it was not unified).
 - `BACKLOG.md` O19 added: split `retrieveContent` into one function per intent.
 
-### Known landmines waiting in Batch 4
+- **Batch 4 shape:** the 7 helpers are `buildStateUpdates`, `saveChapterProgress`,
+  `countGuestTurn`, `logTurnAndLockIfExhausted`, `saveSidebarLabels`, `buildAnswerPayload`,
+  `saveChatMessages`. The `updateChatSession` write stays in `saveAndRespond`. Side-effect order
+  is unchanged. `INTENT_MEMORY_WHITELIST` and `sanitizeMemoryUpdate` stay exported (a test imports them).
+- **Batch 4 options object:** `saveAndRespond({ input, session, context, decision, retrieved, response,
+  userId, tokenUsage, guestId })`. `retrieved` is what step5 returned (its `retrieval` field is a different thing).
+- **`_intent` / `intent` in `step7`:** `_intent` became `rawIntent`. They are still two different
+  values (`intent` has a `'CONCEPT_QUESTION'` default). Never merge them.
+- **`effectiveCount` rename stays rejected.** Batch 5 does not touch `askOrchestrator` or `providerErrors.js`.
+- **How Batch 4 was verified (reuse it if a later batch touches a DB-writing file):** a loader hook
+  swaps the file's dependencies for recording stubs, so no DB, Redis or network is touched. Run the
+  committed version and the new one on the same scenarios and compare. Test the harness once with a
+  deliberate one-character bug so you know it can fail.
 
-- `saveAndRespond` has 9 positional parameters; its 2 call sites are in `askOrchestrator.js`.
-  Both change to one options object.
-- `_intent` and `intent` in `step7` are two different values. Rename `_intent` to
-  `rawIntent`, never merge them.
-- `effectiveCount` (askOrchestrator + `utils/providerErrors.js`) was rejected earlier because
-  it crosses files. Re-check whether `step7` now makes it worth doing.
-- `cleanText` copy in `step7` is the third of five to remove. Remaining after that:
-  `chapterResolver`, `sourceFormatter`.
-- Golden set barely reaches rare `step7` branches. Read the branch list before editing and
-  tell the owner which ones the golden run will not exercise.
+### Known landmines waiting in Batch 5
+
+- `chapterResolver.js` is outside Batch 5's original file list but holds the last `cleanText` copy.
+- `rag/geminiEmbeddings.js` → `rag/embeddings.js`: own commit, every importer updated, grep before
+  and after. A grep on 2026-11-05 found it named in `retriever.js`, `indexPipeline.js`,
+  `cache/embeddingCache.js`, `config/env.js`, `ask/intentSafetyNet.js`, `.env.example`, 5 scripts
+  (`dumpGoldenRetrieval`, `dumpFocusModeRetrieval`, `test-no-cache-fallback`,
+  `test-langchain-embedding-smoke`) and in docs (`CLAUDE.md` ×3, `PROJECT_STATE.md`,
+  `STAGE1_DONE.md`, `ZUNO_VERIFIED_FACTS.md`). Archived docs under `docs/archive/` stay as history.
+- `app.js` / `server.js` / `ask.controller.js` run on every request or at boot: read them before editing.
 
 ### Carried to BACKLOG, not fixed here
 
-- `step6`'s legacy path is dead code — `USE_INTENT_ROUTER=true` in the live env.
-- `_intent` / `intent` in `step7` are two different values; rename only, never merge.
+- `step6`'s legacy path is dead code — `USE_INTENT_ROUTER=true` in the live env (O10).
+- Unknown-intent recursion in `intentRouter` drops streaming and abort (O13).
+- `retrieveContent` could be one function per intent (O19).
+- `step7` throws a `TypeError` if `updateChatSession` ever returns null (`updatedSession.title`,
+  while the lines above it use `updatedSession?.`). Unlikely, but the throw is unhandled (O20).
 
 ---
 

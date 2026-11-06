@@ -306,6 +306,15 @@ refactor (Batch 3), left alone because the refactor plan only allows splitting
 global fallback finding nothing), so add a test for them first.
 **Stage 2.**
 
+### O20. `step7` crashes if `updateChatSession` returns null
+`ask/step7.saveAndRespond.js` reads `updatedSession?.totalTokensUsed` and
+`updatedSession?.chatState` safely, then `updatedSession.title` (in `saveSidebarLabels`)
+with no `?.`. If the session write ever returned null, the turn throws a `TypeError`
+after the DB write already succeeded. Found while building the Batch 4 test harness and
+kept as is, because the refactor must not change behaviour. Either guard it, or make
+`updateChatSession` throw instead of returning null.
+**Stage 2.**
+
 ---
 
 ## AI Track — Python retrieval service
