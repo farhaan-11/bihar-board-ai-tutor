@@ -1,5 +1,5 @@
 /**
- * geminiEmbeddings.js
+ * embeddings.js
  *
  * Embedding provider for indexing AND query time.
  *

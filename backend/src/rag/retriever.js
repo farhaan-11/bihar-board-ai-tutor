@@ -9,7 +9,7 @@
  */
 
 import path from 'node:path';
-import { createQueryEmbeddings } from './geminiEmbeddings.js';
+import { createQueryEmbeddings } from './embeddings.js';
 import { rerankResults } from './reranker.js';
 import { retrieverConfig } from './retriever.config.js';
 import { Chunk } from '../models/chunk.model.js';

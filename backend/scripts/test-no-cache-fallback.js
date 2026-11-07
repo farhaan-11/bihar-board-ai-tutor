@@ -13,7 +13,7 @@
  * expired (or rag:index ran).
  *
  * Fix (Rule 4 — remove the cause, no read-side guard):
- *   - geminiEmbeddings.js exposes embedQueryWithMeta() → { embedding, usedFallback }
+ *   - embeddings.js exposes embedQueryWithMeta() → { embedding, usedFallback }
  *   - embeddingCache.getOrFetch() accepts fetchFn returning
  *     { embedding, cacheable } and skips BOTH L1 and L2 writes when cacheable===false
  *   - retriever.js propagates usedFallback; retrievalCache skips its write too

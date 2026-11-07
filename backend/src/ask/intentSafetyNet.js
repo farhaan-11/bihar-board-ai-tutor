@@ -4,7 +4,7 @@
 // Any error returns { fired: false }, so a failed check never blocks the pipeline.
 
 import { Chunk } from '../models/chunk.model.js';
-import { createQueryEmbeddings } from '../rag/geminiEmbeddings.js';
+import { createQueryEmbeddings } from '../rag/embeddings.js';
 
 // Default is 0.70, tunable through SAFETY_NET_SIMILARITY_THRESHOLD.
 // This check gets the decider's English translation, not the student's raw Hinglish.

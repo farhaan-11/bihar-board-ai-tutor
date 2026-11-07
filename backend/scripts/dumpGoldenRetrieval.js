@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 
 import { connectDB, disconnectDB } from '../src/db/mongooseClient.js';
 import { retrieveRelevantChunks } from '../src/rag/retriever.js';
-import { createQueryEmbeddings } from '../src/rag/geminiEmbeddings.js';
+import { createQueryEmbeddings } from '../src/rag/embeddings.js';
 import { extractQueryTerms } from '../src/rag/reranker.js';
 import { Chunk } from '../src/models/chunk.model.js';
 

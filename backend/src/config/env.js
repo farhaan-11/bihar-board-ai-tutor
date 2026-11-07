@@ -41,7 +41,7 @@ const PROVIDER_KEY_MAP = {
   google: ['GOOGLE_API_KEY'], // GEMINI_API_KEY accepted as fallback (see hasProviderKey)
 };
 
-// Mirrors the isUsableApiKey check in geminiEmbeddings.js — rejects placeholder
+// Mirrors the isUsableApiKey check in embeddings.js — rejects placeholder
 // values like "...", "your_key_here", and anything suspiciously short.
 const isRealKey = (value) =>
   typeof value === 'string' &&
@@ -51,7 +51,7 @@ const isRealKey = (value) =>
 
 // Returns true if the required key for this provider has a real (non-placeholder) value.
 // Handles the google special case where GEMINI_API_KEY is accepted as a fallback
-// (mirrors the behaviour in chatModel.js and geminiEmbeddings.js).
+// (mirrors the behaviour in chatModel.js and embeddings.js).
 const hasProviderKey = (provider, key) => {
   if (provider === 'google' && key === 'GOOGLE_API_KEY') {
     return isRealKey(process.env.GOOGLE_API_KEY) || isRealKey(process.env.GEMINI_API_KEY);
