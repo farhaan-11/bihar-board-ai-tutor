@@ -315,6 +315,40 @@ kept as is, because the refactor must not change behaviour. Either guard it, or 
 `updateChatSession` throw instead of returning null.
 **Stage 2.**
 
+### O21. Three more copy-paste duplicates, each spanning two files
+Found while reading Batch 5. All three are the same logic defined twice, and all three
+cross outside Batch 5's file list, which is why they were left alone:
+- `DEVANAGARI_PATTERN` — `rag/retriever.js`, `utils/languageDetector.js`, and again
+  inside a function in `ask/step4.decideRetrieval.js`.
+- `getHeadingParts` — `rag/sourceFormatter.js` and `rag/reranker.js`.
+- `normalizeSearchText` **and** `tokenize` — `curriculum/chapterResolver.js` and
+  `curriculum/topicResolver.js`.
+The `cleanText` and token-helper dedups are done, so this is the remainder of the same
+job. Do it the same way: one shared helper, importers updated, golden set as the gate.
+**Stage 2.**
+
+### O22. Three fields that nothing reads
+Found while reading Batch 5. Each is defined and, in two cases, written, but no code
+ever reads it back:
+- `retrieverConfig.expectedEmbeddingDimension` (`rag/retriever.config.js`) — never read
+  anywhere. The dimension is hard-coded as `3072` in `retriever.js`'s return object
+  instead, so this config value does not even feed the one place that reports it.
+- `aliasesApplied: []` (`curriculum/chapterResolver.js`) — always an empty array, no
+  reader. Left over from the deleted `normalization/normalizeMessage.js`.
+- `rag/retriever.js` imports `node:path` and never uses it.
+Deleting dead code is out of scope for the readability refactor, so all three stay.
+Removing them is behaviour-neutral but should still run the golden set.
+**Stage 2.**
+
+### O23. `formatSources` returns every field twice, snake_case and camelCase
+`rag/sourceFormatter.js` builds each source object with `chapter_title` **and**
+`chapterTitle`, `heading_path` **and** `headingPath`, `chunk_id` **and** `chunkId`,
+plus `section` and `sectionTitle` holding the same value. This is the API response
+shape the frontend reads, so the refactor could not touch it (the plan forbids
+changing the response shape). Collapsing it means grepping the frontend for every
+key first, then dropping the unused half.
+**Stage 2.**
+
 ---
 
 ## AI Track — Python retrieval service

@@ -1,15 +1,9 @@
-/**
- * chapterResolver.js
- *
- * Resolves a free-text message (e.g. "chapter 3 padhao") to a specific chapter
- * in the curriculum index using fuzzy matching and chapter number extraction.
- *
- * NOTE: Used only by test scripts — not part of the runtime server API.
- */
+// I turn a free-text message like "chapter 3 padhao" into one chapter from the
+// curriculum index. Nothing here is an exact lookup: I score every chapter on
+// chapter numbers, title words and subject hints, then return the best one.
+// This does run on the live server — topicResolver and quizGenerator both call in.
 
-// -- Inline normalization (replaces old normalization/normalizeMessage.js dependency) --
-
-const cleanText = (text) => String(text || '').replace(/\s+/g, ' ').trim();
+import { cleanText } from '../utils/text.js';
 
 const SUBJECT_KEYWORDS = {
   'science.physics': ['physics', 'physic', 'bijli', 'electricity', 'light', 'wave', 'force', 'refraction'],
@@ -37,8 +31,8 @@ const detectSectionHint = (normalizedText) => {
   return null;
 };
 
-// Simple inline normalize (replaces deleted normalizeMessage.js)
-const normalizeMessage = (message) => {
+// I lower-case the message and pull out whatever subject/section hints it carries.
+const prepareMessage = (message) => {
   const originalText = cleanText(message);
   const normalizedText = cleanText(originalText.toLowerCase());
   return {
@@ -97,7 +91,9 @@ const flattenChapters = (curriculumIndex) => {
   return chapters;
 };
 
-const createChapterMatch = ({ chapter, normalizedText, sectionHint, subjectHint, chapterNumbers }) => {
+// I score one chapter against the message. Higher means a better match: an exact
+// title hit counts most, then a chapter number, then loose word overlap.
+const scoreChapter = ({ chapter, normalizedText, sectionHint, subjectHint, chapterNumbers }) => {
   const titleText = normalizeSearchText(chapter.title);
   const messageTokens = tokenize(normalizedText);
   const titleTokens = tokenize(chapter.title);
@@ -130,14 +126,14 @@ const buildResult = ({ status, match = null, matches = [], reason }) => ({
 });
 
 export const resolveChapter = (curriculumIndex, message) => {
-  const normalized = normalizeMessage(message);
+  const normalized = prepareMessage(message);
   const normalizedText = normalizeSearchText(normalized.normalizedText);
   const chapterNumbers = extractChapterNumbers(normalizedText);
 
   if (!normalizedText) return buildResult({ status: 'not_found', reason: 'Empty message.' });
 
   const matches = flattenChapters(curriculumIndex)
-    .map((chapter) => createChapterMatch({ chapter, normalizedText, sectionHint: normalized.sectionHint, subjectHint: normalized.subjectHint, chapterNumbers }))
+    .map((chapter) => scoreChapter({ chapter, normalizedText, sectionHint: normalized.sectionHint, subjectHint: normalized.subjectHint, chapterNumbers }))
     .filter((match) => match.score > 0)
     .sort((a, b) => b.score - a.score);
 

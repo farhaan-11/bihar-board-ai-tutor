@@ -30,7 +30,7 @@ const chapterProgressSchema = new mongoose.Schema(
       default: 'in_progress',
     },
 
-    // ─── Quiz Gate (Phase 3) ─────────────────────────────────────────────────
+    // ─── Quiz Gate ───────────────────────────────────────────────────────────
     quizGateBestScore: { type: Number, default: null }, // best percentage achieved on this chapter's gate quiz
     quizGateAttempts:  { type: Number, default: 0    }, // total gate quiz attempts
     lastQuizAttemptId: { type: mongoose.Schema.Types.ObjectId, default: null }, // -> QuizAttempt._id
@@ -73,19 +73,13 @@ const chapterProgressSchema = new mongoose.Schema(
 
 // ─── Indexes ─────────────────────────────────────────────────────────────────
 
-// PRIMARY: one document per logged-in user + chapter (unique enforced at DB level).
-// userId is stored as a STRING, not an ObjectId: the controller passes req.user.id
-// (Mongoose's `.id` virtual returns _id.toString()) and this schema types userId as
-// String, so Mongo stores the string form. The partialFilterExpression must therefore
-// match $type:'string' — exactly like guest_chapter_unique below. It still excludes
-// guest docs (userId is absent/null there), so guests never collide on this index.
-//
-// (Until 2026-11-04 this filtered $type:'objectId', which matched ZERO documents — so
-// the unique constraint silently enforced nothing for logged-in users, risking
-// duplicate per-user-per-chapter docs under concurrent writes. The twin guest index
-// hit the same class of bug in 2026-07 and was fixed first; this one was missed.
-// scripts/fix-chapter-progress-user-index.js is the one-time migration that drops the
-// old objectId-filtered index on existing databases and rebuilds it correctly.)
+// One document per logged-in user per chapter, enforced by the database itself.
+// userId is stored as a STRING, not an ObjectId, because the controller passes
+// req.user.id and this schema types the field as String. So the partial filter has
+// to say $type:'string' — if it says 'objectId' it matches no document at all and
+// the unique constraint quietly enforces nothing. That is exactly what happened
+// here until 2026-11-04; scripts/fix-chapter-progress-user-index.js rebuilds the
+// index on databases that still carry the broken version.
 chapterProgressSchema.index(
   { userId: 1, chapterId: 1 },
   {
@@ -95,17 +89,12 @@ chapterProgressSchema.index(
   }
 );
 
-// GUEST path: same uniqueness for guest users (guestId replaces userId).
-// Uses a type-checking partialFilterExpression (matching user_chapter_unique above),
-// NOT `sparse: true` — sparse only excludes documents where the field is truly
-// ABSENT, not documents where it's explicitly stored as `null`. Mongoose's
-// findOneAndUpdate(upsert:true) applies schema defaults (guestId's default is
-// `null`) to every newly-inserted document, including logged-in users' documents
-// that never touch guestId in code — so a plain sparse index let every first-time
-// logged-in-user-per-chapter document collide on { guestId: null, chapterId }.
-// Confirmed live (2026-07-10/11): a second logged-in user starting a chapter
-// already started by another user got a real E11000 duplicate key error and
-// silently lost that turn's progress write.
+// The same uniqueness for guests. This must use a type-checking partial filter and
+// NOT `sparse: true`: sparse skips documents where the field is missing, but every
+// logged-in document here stores guestId as an explicit null (the schema default,
+// applied on upsert). With a sparse index all of those nulls collided on
+// { guestId: null, chapterId }, and in July 2026 that cost a real student their
+// progress write with an E11000 duplicate key error.
 chapterProgressSchema.index(
   { guestId: 1, chapterId: 1 },
   {

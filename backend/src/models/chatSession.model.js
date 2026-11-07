@@ -12,10 +12,8 @@ const chatSessionSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
-    // Set once on creation for a guest's session (via updateChatSession
-    // $setOnInsert, from step7). Nulled when the session is claimed on login
-    // (claimGuestData). Lets a guest's chats be transferred to their account —
-    // and, until then, be found by guest id. See GUEST_SERVERSIDE_PLAN.md.
+    // Set once when a guest's session is created, then nulled when that guest logs
+    // in and claims it. This is what lets a guest's chats move to their account.
     guestId: {
       type: String,
       default: null,
@@ -38,40 +36,40 @@ const chatSessionSchema = new mongoose.Schema(
       status: {
         type: String,
         enum: ['active', 'exhausted', 'blocked'],
-        default: 'active', // Whether the session can still be used
+        default: 'active',
       },
       learningMode: {
         type: String,
         enum: ['idle', 'lesson', 'doubt', 'quiz'],
-        default: 'idle', // What the student is currently doing
+        default: 'idle',
       },
       currentSubjectId: {
         type: String,
-        default: null, // Subject in focus (room to add Math etc. later)
+        default: null, // Only Science today; the id shape leaves room for more.
       },
       currentSectionId: {
         type: String,
-        default: null, // Section in focus (Physics, Chemistry, Biology)
+        default: null, // A section is Physics, Chemistry or Biology.
       },
       currentChapterId: {
         type: String,
-        default: null, // Chapter in focus
+        default: null,
       },
       abuseCount: {
         type: Number,
-        default: 0, // Count of abusive/spam messages in this session
+        default: 0,
       },
       answerLanguage: {
         type: String,
-        default: 'hinglish', // Language Zuno should answer in
+        default: 'hinglish',
       },
       sessionTopicsProgress: {
         type: [String],
-        default: [], // Topics touched this session (used for summaries)
+        default: [], // Topics touched this session, used to summarise it.
       },
       pendingAction: {
         type: mongoose.Schema.Types.Mixed,
-        default: null, // An action awaiting student confirmation (e.g. switch subject)
+        default: null, // Something waiting on the student's yes, e.g. switch subject.
       },
       lastTopic: {
         type: String,
@@ -101,19 +99,20 @@ const chatSessionSchema = new mongoose.Schema(
         type: Date,
         default: null,
       },
-      // Resets to 0 on any academic turn. Used for progressive redirect tiers (Phase 3).
+      // Back to 0 on any academic turn. Decides how firmly Zuno pulls a drifting
+      // chat back to studying.
       consecutiveNonAcademicTurns: {
         type: Number,
         default: 0,
       },
-      // Never resets. Used for hard session-level non-academic cap (Phase 3).
+      // Never resets, so a session that never returns to studying can be hard-blocked.
       totalNonAcademicTurns: {
         type: Number,
         default: 0,
       },
-      // Incremented by 1 per conversation turn (student Q + tutor A = 1 turn).
-      // Used by P2-T3 to detect first turn for auto title generation.
-      // Checked atomically via $inc — race-condition safe across concurrent tabs.
+      // One per turn (student question + tutor answer = 1 turn). Step 7 spots the
+      // first turn from this to auto-name the chat, and bumps it with $inc so two
+      // open tabs cannot both believe they are turn one.
       messageCount: {
         type: Number,
         default: 0,
@@ -151,8 +150,8 @@ const chatSessionSchema = new mongoose.Schema(
       enum: ['focus', 'global'],
       default: 'global',
     },
-    // Accumulated across both LLM calls per turn (decider + tutor).
-    // Wired to actual counts in P2-T4. Defaults to 0 until then.
+    // Both LLM calls of a turn (decider + tutor) add into this. Step 7 locks the
+    // session once it crosses SESSION_TOKEN_LIMIT.
     totalTokensUsed: {
       type: Number,
       default: 0,
@@ -164,15 +163,13 @@ const chatSessionSchema = new mongoose.Schema(
   }
 );
 
-// Compound index for P2-T5 sessions list query: find by userId, sort by recency.
-// Without this, MongoDB does a full collection scan — O(n) at any scale.
+// The sidebar list query: find by userId, newest first. Without this index MongoDB
+// scans the whole collection on every page load.
 chatSessionSchema.index({ userId: 1, lastMessageAt: -1 });
 
-// Guest-owned sessions lookup — used by the login claim
-// (claimGuestData: updateMany({ guestId, userId: null })). Non-unique (a guest
-// can have many sessions). Partial on { $type: 'string' } so the null rows that
-// every logged-in session carries (schema default) are not indexed — same
-// reasoning as the guest index on quiz_attempts / chapter_progress.
+// Finds a guest's sessions when they log in and claim them. Not unique, since one
+// guest can have many sessions. The partial filter on { $type: 'string' } keeps the
+// null guestId that every logged-in session carries out of the index.
 chatSessionSchema.index(
   { guestId: 1 },
   { partialFilterExpression: { guestId: { $type: 'string' } } }
@@ -181,11 +178,8 @@ chatSessionSchema.index(
 export const ChatSession =
   mongoose.models.ChatSession || mongoose.model('ChatSession', chatSessionSchema);
 
-/**
- * Returns a plain JS object with all chatState fields set to their schema defaults.
- * Derived directly from the schema — add a field with a default to the schema above
- * and this function automatically includes it. No manual sync needed.
- */
+// A fresh chatState with every default filled in. I build it from the schema itself,
+// so adding a field above is enough — there is no second list to keep in step.
 export const getDefaultChatState = () => {
   const doc = new ChatSession();
   return doc.chatState.toObject();

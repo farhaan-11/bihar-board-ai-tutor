@@ -6,7 +6,8 @@ export const askQuestionController = async (req, res, next) => {
   let timeoutId = null;
   const abortController = new AbortController();
 
-  // Detect early client disconnect (browser closed/refreshed)
+  // If the student closes or refreshes the tab, I stop the pipeline instead of
+  // paying for an LLM answer nobody will read.
   req.on('close', () => {
     if (!res.writableEnded) {
       console.warn(`[Ask API] Client disconnected early. Aborting request...`);
@@ -19,15 +20,15 @@ export const askQuestionController = async (req, res, next) => {
     // req.guest is set by attachGuest (already null when req.user is present)
     const guestId = req.guest?.id || null;
 
-    // Set a hard 60-second timeout for the LLM pipeline
+    // A hard stop for the whole pipeline, so a hung LLM call cannot leave the
+    // student staring at a spinner forever.
     timeoutId = setTimeout(() => {
       console.warn(`[Ask API] Request hit 60s hard timeout. Aborting...`);
       abortController.abort(new Error('Timeout'));
     }, 60000);
-    // Opens the SSE pipe on first use — safe to call more than once (e.g. once
-    // from an early onStage() during Step 4/5, and again from Step 6's own
-    // onStreamStart() call) since the streamStarted guard makes it a no-op
-    // after the first call.
+    // Opens the SSE pipe. Several places call this — an early onStage() during
+    // Step 4/5, then Step 6's own onStreamStart() — so the streamStarted guard
+    // makes every call after the first one a no-op.
     const openStream = () => {
       if (streamStarted) return;
       streamStarted = true;
@@ -78,20 +79,20 @@ export const askQuestionController = async (req, res, next) => {
   } catch (error) {
     if (timeoutId) clearTimeout(timeoutId);
 
-    // Handle our explicit AbortController errors
+    // The two aborts I raise myself, above: a closed tab and the hard timeout.
     if (error.name === 'AbortError' || error.message === 'Client disconnected' || error.message === 'Timeout') {
-      const errorMsg = error.message === 'Timeout' 
-        ? 'Sorry, lagta hai network thoda slow hai. Mujhe answer laane mein zyada time lag gaya! Ek baar wapas poochho, main try karta hoon.' 
+      const studentMessage = error.message === 'Timeout'
+        ? 'Sorry, lagta hai network thoda slow hai. Mujhe answer laane mein zyada time lag gaya! Ek baar wapas poochho, main try karta hoon.'
         : 'Request cancel kar di gayi.';
 
       if (streamStarted) {
-        // Safe closure if headers were already sent
-        res.write(`data: ${JSON.stringify({ event: 'end', payload: { status: 'cancelled', answer: errorMsg, sources: [] } })}\n\n`);
+        // Headers already went out, so I close the stream politely instead.
+        res.write(`data: ${JSON.stringify({ event: 'end', payload: { status: 'cancelled', answer: studentMessage, sources: [] } })}\n\n`);
         return res.end();
       } else {
-        // Standard JSON response if headers weren't sent
+        // Nothing sent yet, so a normal JSON reply still works.
         if (error.message === 'Client disconnected') return res.end();
-        return sendResponse(res, 504, { message: errorMsg });
+        return sendResponse(res, 504, { message: studentMessage });
       }
     }
 

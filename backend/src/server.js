@@ -12,13 +12,13 @@ let server;
 try {
   await connectDB();
 
-  // Verify MongoDB has chunks available for vector search.
-  // If this throws, RAG cannot work at all — hard exit is correct.
+  // No chunks means retrieval cannot work at all, so I would rather the boot fail
+  // loudly here than have every student question come back empty.
   const totalVectors = await Chunk.countDocuments();
   console.log(`[Zuno] MongoDB vector chunks connected. Total chunks indexed: ${totalVectors}`);
 
-  // Redis is required for auth (tokens, sessions). Fatal in production.
-  // In development, warn and continue so non-auth features still work.
+  // Auth needs Redis for tokens and sessions, so losing it is fatal in production.
+  // In dev I only warn, so the rest of the app still runs without it.
   try {
     await connectRedis();
   } catch (err) {
@@ -30,12 +30,13 @@ try {
     console.warn('[Redis] Check REDIS_URL in .env and verify your Upstash instance is active.');
   }
 
-  // Bind server port immediately so cloud providers (Render/Railway) detect open port without delay.
+  // I open the port before anything optional, because Render kills a deploy that
+  // does not start listening quickly enough.
   server = app.listen(env.port, () => {
     console.log(`Server running on port ${env.port}`);
   });
 
-  // Verify SMTP in background without blocking port binding.
+  // SMTP is checked in the background, so a slow mail host cannot delay the port.
   connectMailer().catch((err) => {
     console.warn('[Mailer] SMTP connection verification failed:', err.message);
   });

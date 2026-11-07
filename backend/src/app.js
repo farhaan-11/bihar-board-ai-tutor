@@ -24,8 +24,8 @@ app.set('trust proxy', 1);
 
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// FRONTEND_URL supports a comma-separated list so staging/prod/local dev
-// origins can all be whitelisted without loosening this to a wildcard.
+// FRONTEND_URL takes a comma-separated list, so staging, prod and local dev can
+// all be allowed without opening this up to a wildcard.
 const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:5173')
   .split(',')
   .map((url) => url.trim())
@@ -37,9 +37,8 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    // Logged so a frontend/backend origin mismatch (e.g. Vite auto-picking a
-    // different port) is diagnosable from server logs instead of surfacing
-    // only as a generic frontend error.
+    // I log the blocked origin, because otherwise a port mismatch (Vite picking a
+    // different one, say) reaches the student as a blank generic frontend error.
     console.error(`[CORS] Blocked request from unlisted origin: ${origin}. Allowed: ${allowedOrigins.join(', ')}`);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -73,8 +72,5 @@ app.use((req, _res, next) => {
 });
 
 app.use(errorHandler);
-
-
-
 
 export default app;
