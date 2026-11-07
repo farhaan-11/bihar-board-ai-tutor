@@ -349,6 +349,39 @@ changing the response shape). Collapsing it means grepping the frontend for ever
 key first, then dropping the unused half.
 **Stage 2.**
 
+### O24. The second `verify_email` Redis key is never read
+`controllers/auth.controller.js` writes two keys on signup:
+`verify_email:<token> -> userId` and `verify_email:<userId> -> token`. Only the
+first is ever read (`verifyEmail`). A grep across `backend/` and `frontend/`
+found no reader for the second — it is written on signup and deleted on both the
+rollback and the verify path, and that is all it does. The old comment claimed it
+was a "reverse lookup"; Batch 6 corrected the comment but left the key, because
+deleting it is behaviour, not readability. Removing it is a two-line change plus
+one deployment where old keys simply expire on their own (24h TTL).
+**Stage 2.**
+
+### O25. Auth errors come back in two different JSON shapes
+Same file, same endpoint family, two shapes:
+`throw new ApiError(400, msg)` (17 places) reaches the error middleware and
+answers `{ success:false, error:{ message, statusCode } }`, while
+`sendResponse(res, 400, { message })` (14 places) answers
+`{ success:false, message, data:null }`. So `register` and `resetPassword` report
+the same kind of failure differently. Unifying them is the right fix, but it
+changes the response shape, so the frontend's error handling must be grepped
+first — `services/axios/axiosInstance.js` and every auth page. Batch 6 left it
+alone for exactly that reason.
+**Stage 2.**
+
+### O26. `googleCallback` reads `email` one line before it checks it
+In `getGoogleProfile` (`auth.controller.js`), `const name = payload.name ||
+email.split('@')[0]` runs *before* `if (!email) return null`. If Google ever
+returns a profile without an email and without a name, that line throws. Today
+the throw is caught by `googleCallback`'s catch and the student still lands on
+`?error=google_failed`, so the symptom is invisible — it is only wrong in the
+logs. Swapping the two lines fixes it, but it changes what gets logged, so
+Batch 6 kept the original order.
+**Stage 2.**
+
 ---
 
 ## AI Track — Python retrieval service

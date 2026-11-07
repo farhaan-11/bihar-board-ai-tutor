@@ -1,5 +1,11 @@
 # Backend Readability Refactor — Plan v2
 
+> **✅ FINISHED 2026-11-07. Archived — nothing here is pending.**
+> All seven batches (0–6) are done, committed and merged to `main`. This file is
+> kept for its record of the per-batch decisions and the verification methods
+> (the stub-harness technique in particular), not as live work. The follow-ups it
+> found are in `BACKLOG.md` as O19–O26.
+
 Written 2026-11-05 on branch `backend-readability-refactor`.
 This replaces v1, which was comments-only and wrong.
 
@@ -18,9 +24,21 @@ This replaces v1, which was comments-only and wrong.
 | **3 — Retrieval + answer** | ✅ **done 2026-11-05.** 1,020 → 862 lines, comment lines 213 → 113, internal refs → 0. `noContent()` in step5, token helper and `normalizeSections` duplicates removed, `normalizedIntent` gone. Offline 4/4 + shadow test green, old-vs-new compared on every branch that runs without the DB or an LLM. Golden set PASS (owner ran it), owner read all 3 files. |
 | **4 — `step7` alone** | ✅ **done 2026-11-05.** `saveAndRespond` 306 → 61 lines, split into 7 helpers, 9 positional parameters → one options object (2 call sites in `askOrchestrator`). File 491 → 498 lines (the helpers add signatures), comment lines 117 → 77, internal refs 13 → 0, `_intent` → `rawIntent`, `cleanText` copy removed. Checked with a throwaway stub harness (46 scenarios, old vs new: every call, its order and arguments, console logs, returned payload) and a second one for the 2 call sites. Offline 4/4, `test-choose-course-memory`, shadow test green. Golden set PASS (owner ran it). |
 | **5 — Edges + file rename** | ✅ **done 2026-11-06, committed 2026-11-07 as `b87780e` (rename) + `9fd4d5f` (the 9 files).** 1,084 → 1,015 lines, comment lines 221 → 161, internal refs 10 → 0. 12 renames across 5 files (`retriever.js` 7, `sourceFormatter.js` 2, `chapterResolver.js` 2, `ask.controller.js` 1); both model files are comments only. Two false comments fixed: `chapterResolver`'s header claimed it was test-only (it runs live), and `totalTokensUsed` claimed it was not wired yet (it is). `geminiEmbeddings.js` → `embeddings.js` done with `git mv`: 7 real imports updated, 5 comment mentions, 6 doc files; grep before/after, every import path resolved, module and its 3 app-side importers load. Checks: `node --check` on all, offline 4 green, `sourceFormatter` compared old-vs-new on 12 scenarios, `chapterResolver` on 39 real inputs, both schemas dumped and byte-identical (38 + 39 fields, all indexes), `app.js`/`server.js` code-only diff identical. Golden set PASS (owner ran it, on the whole working tree before it was split into the two commits). Not pushed. |
-| 6 — Auth (optional) | ⬜ |
+| **6 — Auth** | ✅ **done 2026-11-07.** `controllers/auth.controller.js` 683 → 611 lines, comment lines 147 → 75 (21.5% → 12%). **Scope was widened from the plan's "comments + names only" to include W3 — see the decision below.** Longest function 91 → 55 lines: `googleCallback` 91 → 24 (`getGoogleProfile`, `findOrCreateGoogleUser`, `startGoogleSession`, `backToApp`), `register` 72 → 35 (`readSignupInput`, `sendVerificationLink`), `login` 78 → 55 (`loginBlockedReason`, shared `startSession`), `refreshAccessToken` 51 → 37 (`isKnownRefreshToken`). Duplicates removed: password rules (2 → 1), cookie options (4 → 1), `saltRounds` (2 → 1), the login/Google session start (2 → 1), and the `604800` literal. 2 renames: local `FRONTEND_URL` → `appBaseUrl`, export `refreshToken` → `refreshAccessToken` (+ `auth.routes.js`). Checks: comment-stripped diff identical after the comment passes, renames reversed and compared byte-for-byte, helper-level equivalence runs (13 passwords, 7 env values, 3 NODE_ENV settings), and a stub harness comparing old vs new on **35 scenarios** across all four rewritten functions — 35/35 identical, and both harnesses were mutation-tested to prove they can fail. Offline 4 green. `BACKLOG` O24–O26 added. Owner ran the real app: logout → Google login, both fine. The email register → verify → password login → refresh path was **not** re-tested live; it rests on the harness alone, so watch it on the first real signup after deploy. |
 
 ### Decisions taken while working — do not re-litigate
+
+- **Batch 6 scope widened to include W3 (2026-11-07), on the owner's call.** The
+  table above planned Batch 6 as "comments + names only, no structure". The owner
+  stopped that: the whole point of this refactor is code a beginner can read, and
+  a 91-line `googleCallback` with tidy comments is still unreadable. So Batch 6
+  also split the four long functions and removed the duplicates. The risk this
+  avoids is real — auth has **no automated test coverage at all**, and the golden
+  set does not touch it — so the gate was raised instead of the scope being cut:
+  every rewritten function was compared against the committed version on a stub
+  harness (35 scenarios), both harnesses were mutation-tested, and the owner runs
+  the real register → verify → login → logout → refresh → Google flow before the
+  merge.
 
 - **`effectiveCount` rename: rejected.** Grep found 2 files (`askOrchestrator.js`,
   `utils/providerErrors.js`). Cross-file, so it waits for the batch that includes
