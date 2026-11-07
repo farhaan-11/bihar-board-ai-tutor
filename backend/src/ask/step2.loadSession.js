@@ -1,7 +1,5 @@
-/**
- * step2.loadSession.js — Step 2 of the Ask API flow
- * * UPGRADED PRODUCTION-GRADE PIPELINE WITH EMBEDDED ARRAY SUPPORT
- */
+// I load the session, its state and the recent messages from MongoDB.
+// If there is no session yet, I start a fresh one in memory.
 
 import { randomUUID } from 'node:crypto';
 import ApiError from '../utils/ApiError.js';
@@ -17,38 +15,28 @@ export const loadSession = async ({ requestedSessionId, userId, guestId, studyMo
   const sessionId = requestedSessionId || randomUUID();
   if (isDev) console.log(`[Step 2] loadSession — sessionId: ${sessionId}, isNew: ${!requestedSessionId}`);
 
-  // Parallel lookup directly hitting primary key indexe
+  // Both reads hit an indexed field, so I run them together instead of one after the other.
   const [dbSession, dbMessages] = await Promise.all([
     findChatSession(sessionId),
-    getRecentChatHistory(sessionId, 14), // Requests last 14 messages clean slice array
+    getRecentChatHistory(sessionId, 14),
   ]);
 
-  // Backward compatible message window layer array parsing
   const recentMessages = Array.isArray(dbMessages) ? dbMessages : [];
 
   let chatState = null;
 
   if (dbSession) {
     const sessionOwner = dbSession.userId?.toString();
-    // If the session has a real owner, the requester must present that same
-    // userId. A missing/guest requester (userId null) does NOT bypass this —
-    // only a genuinely ownerless (guest) session skips the check.
+    // A logged-in user's session can only be opened by that same user. A guest session
+    // has no owner at all, so it skips this check — a null userId does not bypass it.
     if (sessionOwner && sessionOwner !== userId) {
       throw new ApiError(403, 'Yeh session aapka nahi hai.');
     }
 
-    // Mode-mismatch guard — sessionType is immutable once a session is created
-    // (set once via $setOnInsert, see chatSession.service.js), but studyMode
-    // arrives fresh on every request. Reusing a session whose sessionType
-    // doesn't match the incoming studyMode would corrupt it (chapter fields
-    // get wiped/populated inconsistently with sessionType — see
-    // GLOBAL_MODE_VERIFICATION_CHECKLIST.md A2/E1 for the two confirmed UI
-    // paths this happens through). Rather than patch every place a mismatch
-    // could originate (today's UI buttons, or any future client), enforce the
-    // invariant here structurally: a mismatch is treated exactly like no
-    // session was requested at all, reusing the already-proven cold-start path
-    // below instead of duplicating its logic. The old session is never
-    // touched — it's simply not reused.
+    // A session's type is fixed when it is created, but studyMode arrives fresh on every
+    // request. Reusing a focus session for a global turn corrupted its chapter fields, so
+    // instead of patching every UI button that could send a mismatch, I handle it here:
+    // a mismatch is treated as if no session was asked for. The old one is left untouched.
     if (dbSession.sessionType && dbSession.sessionType !== studyMode) {
       if (isDev) console.warn(
         `[Step 2] Mode mismatch — session ${sessionId} is sessionType="${dbSession.sessionType}" ` +
@@ -82,20 +70,16 @@ export const loadSession = async ({ requestedSessionId, userId, guestId, studyMo
       if (isDev) console.log('[Step 2] Inactivity gap detected — resetting learningMode to idle.');
       chatState.learningMode = 'idle';
       chatState.pendingAction = null;
-      // Reset streak counter — student returned fresh, don't greet them with Tier 2 redirect.
-      // totalNonAcademicTurns intentionally NOT reset (session-lifetime metric for hard cap).
+      // The student came back after a break, so I forgive the small-talk streak. The
+      // lifetime total stays, because the hard cap is counted over the whole session.
       chatState.consecutiveNonAcademicTurns = 0;
     }
   }
 
-  // ─── Cross-session chapter progress (single source of truth) ─────────────
-  // ChapterProgress (not chatState) owns currentTopicId/completedTopicIds now.
-  // Loaded fresh on every focus turn (Redis-cached, 60s TTL — cheap) so step5's
-  // NEXT_STEP resolver and step7's engagement writes always see the latest
-  // cross-session state, regardless of whether this is a new or existing session.
-  // Read failure is non-fatal: gracefully degrade to null (treated as "not started
-  // yet" by getNextTopic) rather than failing the whole turn — self-healing on the
-  // next successful read/write since the underlying Mongo document is untouched.
+  // Topic progress lives in ChapterProgress, not in chatState, so it survives across
+  // sessions. I read it fresh on every focus turn — Redis caches it for 60s, so it is
+  // cheap — because step5 and step7 both need the current value.
+  // If the read fails I carry on with null instead of killing the whole turn.
   let chapterProgress = null;
   if (studyMode === 'focus' && focusChapter?.id) {
     try {

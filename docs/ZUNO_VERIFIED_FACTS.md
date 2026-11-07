@@ -218,8 +218,8 @@ startup refresh resolves, so there is no flash of the wrong page (`:43-45`).
    `intentRouter.js:343-367`.
 5. **Score floors in retrieval — the real gate.** `backend/src/rag/retriever.js:30-37, 66-84`:
    `FINAL_SCORE_THRESHOLD 0.65`, `STRONG_VECTOR_SCORE_THRESHOLD 0.70`,
-   `TERM_MATCH_VECTOR_SCORE_THRESHOLD 0.62`, `CONTENT_ONLY_VECTOR_THRESHOLD 0.70`.
-   `passesFinalFilter()` requires (final ≥ 0.65 **or** a term match at the right vector bar)
+   `HEADING_MATCH_VECTOR_THRESHOLD 0.62`, `CONTENT_ONLY_VECTOR_THRESHOLD 0.70`.
+   `shouldKeepResult()` requires (final ≥ 0.65 **or** a term match at the right vector bar)
    **and** (a term match **or** vector ≥ 0.70 **or** a Devanagari query). The content-only bar is
    raised specifically so "Newton" appearing in the Human Eye chapter body can't leak
    (comment `:34-37`).
@@ -363,7 +363,7 @@ backend Dockerfile merged, full Compose stack in progress.
 |---|---|---|
 | **Chapters** | **16** content chapters (+1 `meta/science-overview.md` = 17 loaded docs) | `find data/class-10 -name "*.md"`: biology 6, chemistry 5, physics 5. `npm run test:chunks` Test 3 → "Loader returns exactly **17** documents"; Test 14 → "covers all 17 chapters". ⚠️ `CLAUDE.md` says "16 chapters (4 bio / 5 chem / 7 physics)" — that split is **stale**; the total is right. |
 | **Content chunks** | **629** | MEASURED twice. `npm run test:chunks` type distribution sums to 629 (concept 195, mixed 165, question 83, example 59, table 52, definition 41, formula 19, activity 11, diagram_reference 4). And in production: `LATENCY_PROBLEMS.md:1109-1110` → `Chunk.countDocuments() : 303 ms (629 docs)`. ⚠️ `CLAUDE.md` says "600 chunks expected" — stale. |
-| **Embedding dimensions** | **3072** | `src/rag/geminiEmbeddings.js:175` `dimensions: 3072`; enforced by a schema validator at `src/models/chunk.model.js:18-21` ("Embedding must have exactly 3072 dimensions"). Both providers are 3072-dim so the Atlas index is provider-agnostic (`geminiEmbeddings.js:10`). |
+| **Embedding dimensions** | **3072** | `src/rag/embeddings.js:175` `dimensions: 3072`; enforced by a schema validator at `src/models/chunk.model.js:18-21` ("Embedding must have exactly 3072 dimensions"). Both providers are 3072-dim so the Atlas index is provider-agnostic (`embeddings.js:10`). |
 | **Intent types** | **9** classifier intents → **10** routing branches | 9 numbered in `src/prompts/deciderPrompt.js:10-106` (GREETING, CHOOSE_COURSE, NEXT_STEP, EXPLAIN_MORE, CONCEPT_QUESTION, EXAM_INFO, EMOTIONAL_SUPPORT, OUT_OF_CONTEXT, UNSAFE_OR_ABUSIVE), validated by `VALID_INTENTS` at `src/ask/step4.decideRetrieval.js:36`. `INTENT_CONFIG` has 10 keys (`src/ask/intentRouter.js:61-70`) because CONCEPT_QUESTION splits into `_WITH_CHUNKS` / `_NO_CHUNKS`. |
 | **Pipeline steps** | **7** | `src/ask/askOrchestrator.js:13-19`; files `step1.`…`step7.` |
 | **LLM calls per turn** | **2** chat completions (+ up to 2 embedding calls) | `askOrchestrator.js:16` "← 1st LLM call", `:18` "← 2nd LLM call"; ADR-001 `docs/decisions/001-two-llm-call-pipeline.md`. Embeddings: SafetyNet probe (`askOrchestrator.js:97`) + retrieval. `CHAPTER_COMPLETE` skips call 2 entirely (`askOrchestrator.js:166`). |
@@ -407,7 +407,7 @@ fallback-derived data at **both** layers; indexing never falls back at all, sinc
 one store is unrecoverable without a full re-index.
 
 **Where.** `src/cache/embeddingCache.js:40-50` (the contract) and `:107-111` (the refusal);
-`src/cache/retrievalCache.js:147-152` (`!result.usedFallback`); `src/rag/geminiEmbeddings.js`
+`src/cache/retrievalCache.js:147-152` (`!result.usedFallback`); `src/rag/embeddings.js`
 `embedQueryWithMeta`. Test: `npm run test:no-cache-fallback`.
 
 **Number.** Blast radius removed: the full **30-day** embedding TTL + **24-hour** retrieval TTL.

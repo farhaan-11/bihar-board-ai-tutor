@@ -1,18 +1,14 @@
-/**
- * retriever.config.js
- *
- * Configuration constants for the RAG retriever.
- */
-
+// The retriever's fallback numbers, used when a caller passes none.
+// Each one was measured, so read its reason before changing it.
 export const retrieverConfig = {
-  // How many top results to return after reranking
+  // How many results survive once reranking is done.
   defaultTopK: 5,
 
-  // Minimum similarity score — results below this are discarded.
-  // OpenAI text-embedding-3-large cosine scores: relevant content ~0.55-0.75,
-  // unrelated chapters ~0.30-0.45. 0.55 is the proven discrimination floor.
+  // Anything scoring below this is thrown away. Measured on OpenAI
+  // text-embedding-3-large: relevant content lands at 0.55-0.75 and unrelated
+  // chapters at 0.30-0.45, so 0.55 is the line that separates the two.
   defaultMinScore: 0.55,
 
-  // Expected embedding vector dimension (OpenAI text-embedding-3-large & Gemini gemini-embedding-001 both = 3072)
+  // Both embedding providers return 3072 numbers per vector.
   expectedEmbeddingDimension: 3072,
 };

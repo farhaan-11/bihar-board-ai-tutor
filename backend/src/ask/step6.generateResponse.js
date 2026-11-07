@@ -1,8 +1,6 @@
-/**
- * step6.generateResponse.js — Step 6 of the Ask API flow.
- * Generates the tutor's answer with the LLM. For non-academic intents
- * (greetings/small talk) it forces status to 'answered' to avoid a state mismatch.
- */
+// Step 6: generates the tutor's answer with the LLM.
+// With USE_INTENT_ROUTER=true (the live setting) all the work is done by intentRouter.js.
+// The code after that check is the legacy single-prompt path, used only when the flag is not 'true'.
 
 import { RunnableSequence } from '@langchain/core/runnables';
 import { createChatModel } from '../llm/chatModel.js';
@@ -13,33 +11,10 @@ import { getAnswerLanguageInstruction } from '../utils/languageDetector.js';
 import { sectionsToAnswerText } from './promptHelpers.js';
 import { ProviderUnavailableError, classifyProviderError } from '../utils/providerErrors.js';
 import { logCallTokens, approxTokens } from '../utils/tokenLogger.js';
-import { routeToIntentHandler } from './intentRouter.js';
+import { extractTokenBreakdown } from '../utils/tokenUsage.js';
+import { routeToIntentHandler, normalizeSections } from './intentRouter.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
-
-// Provider-agnostic cache token extractor.
-// Groq: promptTokensCached or cache_read_input_tokens
-// OpenAI: prompt_tokens_details.cached_tokens (auto-active for prompts >1024 tokens)
-// Gemini: separate API — always 0 here
-const extractCacheTokens = (usage) => {
-  const groqCached   = usage.promptTokensCached ?? usage.cache_read_input_tokens ?? 0;
-  const openaiCached = usage.prompt_tokens_details?.cached_tokens ?? 0;
-  return groqCached || openaiCached || 0;
-};
-
-// Extracts full token breakdown from LangChain's handleLLMEnd callback.
-// Path is consistent across Groq, OpenAI, and Google GenAI providers.
-const extractTokenBreakdown = (output) => {
-  const usage = output?.llmOutput?.tokenUsage || {};
-  const input = usage.promptTokens ?? 0;
-  const out = usage.completionTokens ?? 0;
-  return {
-    input,
-    output: out,
-    total: usage.totalTokens ?? (input + out),
-    cached: extractCacheTokens(usage),
-  };
-};
 
 let responseChain = null;
 
@@ -47,30 +22,15 @@ const getResponseChain = () => {
   if (!responseChain) {
     responseChain = RunnableSequence.from([
       tutorResponsePrompt,
-      createChatModel({ temperature: 0.3, maxTokens: 1500 }), // 1500 covers full science explanation across all providers including Gemini
+      createChatModel({ temperature: 0.3, maxTokens: 1500 }), // 1500 covers a full science explanation on every provider, including Gemini
       stringParser,
     ]);
   }
   return responseChain;
 };
 
-/**
- * Normalizes the sections array from the LLM response safely.
- */
-const normalizeSections = (sections) => {
-  if (!Array.isArray(sections)) return [];
-  return sections
-    .map((section) => ({
-      heading: String(section?.heading || '').trim(),
-      content: String(section?.content || '').trim(),
-    }))
-    .filter((section) => section.heading || section.content)
-    .slice(0, 5);
-};
-
-// Returns context-appropriate fallback section content based on responseMode and status.
-// Called when LLM response has empty or malformed sections — must NOT be a generic
-// technical error for non-error modes (e.g. redirect should explain scope, not blame tech).
+// Fallback section text for when the LLM sections are empty or broken.
+// A redirect or conversation reply must not blame a technical error.
 const getFallbackSections = (responseMode, status) => {
   if (responseMode === 'redirect' || status === 'out_of_scope') {
     return [{ heading: '', content: 'Yeh topic Class 10 Science ke scope se bahar hai. Koi Science sawaal poochho — main madad karunga!' }];
@@ -78,11 +38,11 @@ const getFallbackSections = (responseMode, status) => {
   if (responseMode === 'conversation') {
     return [{ heading: '', content: 'Haan! Koi sawaal ho toh poochho ya koi topic choose karo — main yahan hun!' }];
   }
-  // study_tutor mode or unknown — generic technical fallback
+  // study_tutor mode or unknown
   return [{ heading: '', content: 'Thodi technical dikkat aayi. Apna sawaal ek baar aur poochho.' }];
 };
 
-// Creates a safe fallback response when LLM output cannot be parsed (parse errors only).
+// Safe response for when the LLM output cannot be parsed (parse errors only).
 const createFallbackResponse = ({ responseMode }) => ({
   status: 'error',
   responseMode: responseMode || 'study_tutor',
@@ -92,48 +52,42 @@ const createFallbackResponse = ({ responseMode }) => ({
   memoryUpdate: {},
 });
 
-// Curriculum list (~450 tokens) is only useful in specific turns.
-// Sending it on every turn is the single largest avoidable waste in the prompt.
+// The curriculum list (~450 tokens) is only needed in some turns.
+// Sending it every turn is the biggest avoidable waste in the prompt.
 const needsCurriculum = (intent, responseMode, focusChapterPrompt, retrievedContext) => {
-  // Redirect and conversation modes never reference curriculum — short replies only
+  // Redirect and conversation replies are short and never use the curriculum.
   if (responseMode === 'redirect' || responseMode === 'conversation') return false;
 
-  // CHOOSE_COURSE: LLM is explicitly instructed to list chapters from this field
+  // CHOOSE_COURSE lists chapters from this field.
   if (intent === 'CHOOSE_COURSE') return true;
 
-  // EXPLAIN_MORE: re-explains a specific topic already in retrieval context — chapter list is noise
+  // EXPLAIN_MORE re-explains a topic that is already in the retrieved content.
   if (intent === 'EXPLAIN_MORE') return false;
 
-  // Global mode: student has no active chapter — curriculum is the only reference LLM has
+  // Global mode: no active chapter, so the curriculum is the only reference the LLM has.
   if (focusChapterPrompt === 'No focus chapter selected.') return true;
 
-  // Focus mode + retrieval failed: LLM needs curriculum to redirect student gracefully
+  // Focus mode and nothing retrieved: the LLM needs it to redirect the student.
   if (retrievedContext === 'NO_RETRIEVED_CONTEXT') return true;
 
-  // Focus mode + content retrieved: student is in a chapter, chapter list is noise
+  // Focus mode and content retrieved: the chapter list is noise.
   return false;
 };
 
-/**
- * Step 6: Call the Tutor LLM to generate the student-facing answer.
- */
 export const generateResponse = async (input, context, decision, retrieval, streamCallbacks = null, abortSignal = null) => {
 
-  // NEW PATH: Intent Router (Phase 2.3/2.4)
-  // Enable by setting USE_INTENT_ROUTER=true in backend/.env.
-  // Legacy path below stays active while this is false (default).
   if (process.env.USE_INTENT_ROUTER === 'true') {
     const result = await routeToIntentHandler(input, context, decision, retrieval, streamCallbacks, abortSignal);
     return { ...result, answer: sectionsToAnswerText(result) };
   }
 
-  // LEGACY PATH — destructure what the old code needs
+  // Legacy path.
   const { question } = input;
   const { language, memory, history, curriculumSummary, focusChapterPrompt } = context;
   const { responseMode, intent } = decision;
   const { retrievedContext } = retrieval;
 
-  // CHAPTER_COMPLETE: skip the LLM entirely and return a fixed completion message
+  // CHAPTER_COMPLETE: skip the LLM and return a fixed completion message.
   if (retrievedContext === 'CHAPTER_COMPLETE') {
     const chapterCompleteResponse = {
       status: 'answered',
@@ -153,13 +107,13 @@ export const generateResponse = async (input, context, decision, retrieval, stre
 
   if (isDev) console.log(`[Step 6 Execution] Invoking Tutor Generation Engine. Script Target: ${language.answerLanguage}`);
 
-  // Declared outside try so catch block can read the value on parse errors
+  // Declared outside try so the catch block can read it on parse errors.
   let capturedBreakdown = { input: 0, output: 0, total: 0 };
 
   try {
     const targetLanguageInstruction = getAnswerLanguageInstruction(language.answerLanguage);
 
-    // FIXING EMITTED OBJECT BOUNDARIES: Safely stringify memory to prevent [object Object] tokens inside the prompt
+    // Turn memory into JSON text, so the prompt does not show "[object Object]".
     const serializedMemory = memory && typeof memory === 'object'
       ? JSON.stringify(memory, null, 2)
       : String(memory || 'No active state records.');
@@ -188,11 +142,10 @@ export const generateResponse = async (input, context, decision, retrieval, stre
       }
     );
 
-    // Parse the JSON from the LLM response safely using fence removal utility
     const parsed = parseJsonObject(rawResponse, 'Tutor response payload');
 
-    // Code guard: conversation mode should never return insufficient_context or out_of_scope.
-    // If the LLM ignored the prompt instruction and fired the empty-context rule, catch it here.
+    // Conversation mode must never return insufficient_context or out_of_scope.
+    // If the LLM ignored the prompt and did, replace it with a safe reply.
     if (responseMode === 'conversation' && ['insufficient_context', 'out_of_scope'].includes(parsed.status)) {
       console.warn('[Step 6 Guard] Conversation mode but LLM returned', parsed.status, '— overriding with safe fallback');
       const safeConversation = {
@@ -206,34 +159,28 @@ export const generateResponse = async (input, context, decision, retrieval, stre
       return { ...safeConversation, answer: sectionsToAnswerText(safeConversation), tokenUsage: capturedBreakdown.total };
     }
 
-    // Normalize the sections array structure cleanly
     let sections = normalizeSections(parsed.sections);
 
-    // Rescue: LLM sometimes puts conversation response text in "title" instead of sections[0].content.
-    // This happens when the LLM misreads the JSON contract for conversation mode.
-    // If sections are empty but title has content, promote the title text into a section.
+    // The LLM sometimes puts the conversation text in "title" instead of sections[0].content.
+    // If sections are empty but the title has text, use the title as a section.
     if (!sections.length && parsed.title && String(parsed.title).trim()) {
       console.warn('[Step 6 Rescue] Empty sections but title has content — promoting title to section content');
       sections = [{ heading: '', content: String(parsed.title).trim() }];
     }
 
-    // --- Intent status guard ---
-    // If Step 4 marked this turn as conversational, force the status below so the
-    // LLM's status field cannot leak the wrong state to the frontend.
+    // In conversation mode the status is always 'answered', so the LLM cannot send the
+    // frontend a wrong state.
     let targetStatus = parsed.status ? String(parsed.status).trim() : 'answered';
-    const normalizedIntent = String(responseMode || '').toUpperCase();
 
-    if (['CONVERSATION'].includes(normalizedIntent)) {
+    if (responseMode === 'conversation') {
       if (isDev) console.log(`[Step 6 Intent Firewall] Forcing status 'answered' for conversational intent: ${responseMode}`);
       targetStatus = 'answered';
     } else {
-      // Academic questions standard normalization limits
       targetStatus = ['answered', 'insufficient_context', 'needs_clarification', 'out_of_scope'].includes(targetStatus)
         ? targetStatus
         : 'answered';
     }
 
-    // Build the fully compliant normalized response block structure
     const normalized = {
       status: targetStatus,
       responseMode,
@@ -243,7 +190,6 @@ export const generateResponse = async (input, context, decision, retrieval, stre
       memoryUpdate: parsed.memoryUpdate && typeof parsed.memoryUpdate === 'object' ? parsed.memoryUpdate : {},
     };
 
-    // STEP-0: Log tutor token breakdown + retrieved context size.
     logCallTokens('TUTOR', capturedBreakdown, {
       mode: responseMode,
       status: normalized.status,
@@ -266,8 +212,8 @@ export const generateResponse = async (input, context, decision, retrieval, stre
       throw error;
     }
 
-    // Parse error — provider is alive, just output was bad.
-    // Return fallback and let pipeline continue to Step 7.
+    // Parse error: the provider is alive, only the output was bad.
+    // Return a fallback and let the pipeline continue to Step 7.
     if (errorType === 'parse_error') {
       console.error('[Step 6] Parse error. Returning fallback response.', error.message);
       logCallTokens('TUTOR', capturedBreakdown, { mode: responseMode, status: 'PARSE_ERROR_FALLBACK' });
@@ -281,7 +227,7 @@ export const generateResponse = async (input, context, decision, retrieval, stre
       };
     }
 
-    // Provider is down — reset singleton and throw to orchestrator
+    // Provider is down: reset the chain and throw to the orchestrator.
     console.error(`[Step 6] Provider error (${errorType}):`, error.message);
     responseChain = null;
     throw new ProviderUnavailableError(errorType, error.message);

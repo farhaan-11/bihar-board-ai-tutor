@@ -26,7 +26,7 @@ import {
   createDocumentEmbeddings,
   EMBEDDING_PROVIDER,
   GEMINI_EMBEDDING_MODEL,
-} from './geminiEmbeddings.js';
+} from './embeddings.js';
 import { createMarkdownChunks } from './markdownChunker.js';
 import { loadMarkdownDocuments } from './markdownLoader.js';
 

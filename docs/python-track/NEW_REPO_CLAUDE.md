@@ -85,7 +85,7 @@ Jo files matter karti hain:
 | `backend/src/rag/retriever.js` | 239 | Main retrieval — embed → `$vectorSearch` → filter |
 | `backend/src/rag/reranker.js` | 281 | **Custom reranker — asli kaam yahi hai** |
 | `backend/src/rag/retriever.config.js` | 18 | `topK=5`, `minScore=0.55`, `dim=3072` |
-| `backend/src/rag/geminiEmbeddings.js` | 274 | Embeddings (`@langchain/openai`) |
+| `backend/src/rag/embeddings.js` | 274 | Embeddings (`@langchain/openai`) |
 | `backend/src/models/chunk.model.js` | 42 | Chunk schema |
 | `backend/src/ask/step5.retrieveContent.js` | 266 | Caller — `metadataFilter` kahan se aata hai |
 

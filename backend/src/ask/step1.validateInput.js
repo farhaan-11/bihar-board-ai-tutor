@@ -1,28 +1,17 @@
 import ApiError from '../utils/ApiError.js';
+import { cleanText } from '../utils/text.js';
 import { findStudyMapChapter } from '../services/studyMap.service.js';
 
 const VALID_STUDY_MODES = ['global', 'focus'];
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Question must contain at least one letter, number, or Devanagari character.
-// This filters out pure emojis, "?????", or blank/symbol-only input.
+// A real question has at least one letter or digit. This blocks pure emoji and "?????".
 const VALID_TEXT_PATTERN = /[a-zA-Z0-9\u0900-\u097F]/;
 
-// UUID v4 format: 8-4-4-4-12 hex chars separated by dashes
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Collapses repeated spaces into one and trims the ends.
- */
-const cleanText = (value) => String(value || '').replace(/\s+/g, ' ').trim();
-
-/**
- * Validates the question, studyMode, and chapterId from the request body.
- * Implements deterministic safety guards for Zuno.
- *
- * @param {object} body - Raw request body from the Express controller
- * @returns {Promise<{ question, studyMode, requestedSessionId, focusChapter }>}
- */
+// I check the request body before anything else runs. Every problem throws from here,
+// with a Hinglish message the student can actually read.
 export const validateInput = async (body = {}) => {
   const question = cleanText(body.question);
   const studyMode = cleanText(body.studyMode);
@@ -30,39 +19,35 @@ export const validateInput = async (body = {}) => {
 
   if (isDev) console.log(`[Step 1] Validating input — studyMode: ${studyMode}, sessionId: ${requestedSessionId}`);
 
-  // Guard 1: sessionId UUID format (only when provided — new sessions don't send one)
+  // A brand new session sends no id, so I only check the format when one is there.
   if (requestedSessionId && !UUID_REGEX.test(requestedSessionId)) {
     throw new ApiError(400, 'Invalid session ID format.');
   }
 
-  // Guard 2: Empty text validation
+  // These checks are all cheap and run before any DB or LLM call, so junk input costs nothing.
   if (!question) {
     throw new ApiError(400, 'Sawal khali nahi ho sakta! Kripya kuch poochiye.');
   }
 
-  // Guard 3: Maximum Length Restriction (500 characters max limit)
   if (question.length > 500) {
     throw new ApiError(400, 'Aapka sawal bahut bada hai! Kripya apne sawal ko 500 characters se kam me likhein.');
   }
 
-  // Guard 4: Gibberish/Pure Emoji/Pure Symbol Verification
   if (!VALID_TEXT_PATTERN.test(question)) {
     throw new ApiError(400, 'Kripya padhai se juda koi sarthak sawal ya shabd likhiye. Sirf emojis ya symbols allowed nahi hain.');
   }
 
-  // Guard 5: Validate Study Modes
   if (!VALID_STUDY_MODES.includes(studyMode)) {
     throw new ApiError(400, 'studyMode galat hai. Yeh sirf "global" ya "focus" ho sakta hai.');
   }
 
-  // Guard 6: ChapterId not allowed in Global Mode
   if (studyMode === 'global' && body.chapterId) {
     throw new ApiError(400, 'Global Mode me chapterId bhejna allowed nahi hai.');
   }
 
   let focusChapter = null;
 
-  // Guard 7: Focus Mode dynamic validation
+  // Focus mode is the only mode that needs a chapter, and it has to be a real one.
   if (studyMode === 'focus') {
     const chapterId = cleanText(body.chapterId);
 
@@ -70,7 +55,8 @@ export const validateInput = async (body = {}) => {
       throw new ApiError(400, 'Focus Mode ke liye chapterId dena zaroori hai.');
     }
 
-    // Dynamic database/curriculum map lookup
+    // I look the chapter up in the study map instead of keeping a hardcoded list here,
+    // so a new chapter works the moment it is indexed.
     focusChapter = await findStudyMapChapter(chapterId);
 
     if (!focusChapter) {
@@ -82,6 +68,6 @@ export const validateInput = async (body = {}) => {
     question,
     studyMode,
     requestedSessionId,
-    focusChapter, // null in global mode, hydrated object in focus mode
+    focusChapter, // null in global mode, the real chapter object in focus mode
   };
 };

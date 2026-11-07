@@ -194,7 +194,7 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 | ~~BUG-3~~ | ✅ **Fixed** — merged to `main` 2026-08-28 (`--no-ff`). `INTENT_MEMORY_WHITELIST.CHOOSE_COURSE` → `[]`; its fields were dead (overwritten every turn by the `studyMode` force-sync block). Chapter switching works only via the request `chapterId` param — untouched. Verified by `npm run test:choose-course-memory`. See `STAGE1_DONE.md` Section C. |
 | ~~BUG-4~~ | ✅ **Fixed** — merged to `main` 2026-08-28 (`--no-ff`). Stale "Cell structure" / "Atomic structure" entries removed from the decider prompt's OUT_OF_CONTEXT list + rule-8 HARD LIMIT block; both are covered by indexed content (`### Atomic number` ch-05 chemistry, `## 4. Neuron / Nerve Cell` ch-02 biology). Genuinely-absent topics (Newton, Gravitation, Thermodynamics, …) stay excluded. Removes the cause (a stale hardcoded list) per Rule 4 — no guard added. Verified by `npm run test:decider-scope`. See `STAGE1_DONE.md` Section C. |
 | ~~BUG-5~~ | ✅ **Fixed** — merged to `main` 2026-08-28 (`--no-ff`). `chunk.model.js` declares `index({ 'metadata.topic_ids': 1 })`; `retrieveChunksByTopicId` `.find()` passes `{ embedding: 0 }`. `explain` confirms COLLSCAN(629) → IXSCAN(4). Migration `scripts/create-chunk-topic-id-index.js`. Verified by `npm run test:topic-id-lookup`. See `STAGE1_DONE.md` Section C. |
-| ~~BUG-6~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `b576d70`). Fallback-provider embeddings and anything derived from them are never persisted: `geminiEmbeddings.js` `embedQueryWithMeta()` reports `usedFallback`; `embeddingCache` skips L1+L2 when `cacheable:false`; `retrievalCache` skips its 24h write when `result.usedFallback`. Query-time fallback itself untouched. Verified by `npm run test:no-cache-fallback`. See `STAGE1_DONE.md` Section C. |
+| ~~BUG-6~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `b576d70`). Fallback-provider embeddings and anything derived from them are never persisted: `embeddings.js` `embedQueryWithMeta()` reports `usedFallback`; `embeddingCache` skips L1+L2 when `cacheable:false`; `retrievalCache` skips its 24h write when `result.usedFallback`. Query-time fallback itself untouched. Verified by `npm run test:no-cache-fallback`. See `STAGE1_DONE.md` Section C. |
 | ~~BUG-7~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `e0f9d69`). `getAnswerLanguageInstruction()` returned the Hindi/Devanagari instruction from an early `return` (`languageDetector.js:98`) sitting before the tail glossary-append (TASK-024), so only Hinglish answers ever got the `scienceGlossary.js` term vocabulary. Fix (Rule 4): `wantsGlossary` decided once, independent of the language branch; glossary appended to whichever base instruction is returned; Hindi header instructs Devanagari rendering. Verified by `npm run test:glossary-devanagari`. See `STAGE1_DONE.md` Section C. |
 | BUG-7b (noted, deferred) | Legacy `step6.generateResponse.js:160` calls `getAnswerLanguageInstruction(language.answerLanguage)` with no `intent` → glossary never applied on that path for any language. Path is dead in prod (`USE_INTENT_ROUTER=true`). Not a Section C bug; fold into a Stage 2 cleanup of the legacy tutor path. | `ask/step6.generateResponse.js:160` |
 | ~~BUG-8~~ | ✅ **Fixed** — merged to `main` 2026-09-09 (`--no-ff`, `1086b36`). The quiz limiters' inline identity-keyer is extracted to one shared `identityKeyGenerator` export; `askApiLimiter` now uses it (the 3 quiz limiters switched to the shared fn too — byte-identical behaviour). 30/min is unchanged but now measured per `user_<id>` / `guest_<id>`, falling back to IP only when neither is present — so it never has to grow with user count (Rule 4: fixed the key, not the cap). Verified by `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged. See `STAGE1_DONE.md` Section C. |
@@ -260,6 +260,16 @@ pre-router so greetings never reach an LLM.
 
 See `STAGE1_DONE.md` for the launch checklist and the definition of "done".
 Do not start Stage 2 work before every Stage 1 box is ticked.
+
+**Exception, opened 2026-11-05 — the backend readability refactor.**
+Stage 1 *engineering* is complete (A, C, D, F, G all ✅). The seven remaining `[~]`
+boxes are owner deferrals, not pending engineering: I1/I4/I5 (infra, accepted-risk
+notes in `STAGE1_DONE.md`) and E1–E4 (the pilot, owner-parked). On that basis the
+Stage 2 readability refactor is running now, on branch
+`backend-readability-refactor`. **Its plan, live status and per-batch decisions are
+in `docs/BACKEND_READABILITY_PLAN.md` — read that file's STATUS section before doing
+any refactor work.** It is comments, naming and behaviour-preserving structure only;
+no logic change, no dead-code deletion, no frontend.
 
 **Progress (updated 2026-10-29):**
 

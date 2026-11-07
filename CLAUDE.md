@@ -81,7 +81,7 @@ Bihar Board Class 10 students studying Science (Physics, Chemistry, Biology). Th
 - **Runtime**: Node.js (ESM, `"type": "module"`)
 - **Framework**: Express.js
 - **LLM Provider**: Two providers configured — Groq and OpenAI (Google Gemini also supported but unused) — switchable via `LLM_PROVIDER` env var. **Currently active: OpenAI (`gpt-4o-mini`)** — Groq was the original default but is disabled due to repeated 429 rate-limit errors. Decider (intent classifier) can run on a separate model via `DECIDER_PROVIDER`/`DECIDER_MODEL` — currently also OpenAI `gpt-4o-mini`. See `backend/src/llm/llm.config.js`.
-- **Embeddings**: Two providers configured in `backend/src/rag/geminiEmbeddings.js` (filename is legacy — logic now defaults to OpenAI). **Primary: OpenAI `text-embedding-3-large`** (3072-dim). **Fallback: Gemini `gemini-embedding-001`** (3072-dim, query-time only, only fires when OpenAI is down — indexing NEVER falls back, since mixing providers in one vector store silently breaks retrieval). Controlled via `EMBEDDING_PROVIDER` env var.
+- **Embeddings**: Two providers configured in `backend/src/rag/embeddings.js` (renamed from `geminiEmbeddings.js` on 2026-11-06 — the old name said Gemini while OpenAI is primary). **Primary: OpenAI `text-embedding-3-large`** (3072-dim). **Fallback: Gemini `gemini-embedding-001`** (3072-dim, query-time only, only fires when OpenAI is down — indexing NEVER falls back, since mixing providers in one vector store silently breaks retrieval). Controlled via `EMBEDDING_PROVIDER` env var.
 - **Vector Store**: MongoDB Atlas Vector Search (`$vectorSearch` on the `Chunk` model, `chunk.model.js`) — migrated off the old JSON-persisted `LangChain MemoryVectorStore` approach. `retriever.js` queries MongoDB directly; there is no JSON vector file in the runtime path anymore.
 - **RAG Framework**: LangChain (`@langchain/core`, `@langchain/classic`, `@langchain/google-genai`, `@langchain/groq`, `@langchain/openai`, `@langchain/textsplitters`) — still used for chunking/embeddings/prompt orchestration, just not for vector storage
 - **Database**: MongoDB Atlas via Mongoose (`^9.6.2`)
@@ -162,7 +162,7 @@ bihar-board-ai-tutor/
 │   │   │   ├── indexPipeline.js     Offline: load → chunk → embed → save (npm run rag:index)
 │   │   │   ├── markdownLoader.js
 │   │   │   ├── markdownChunker.js
-│   │   │   ├── geminiEmbeddings.js  Embedding provider factory — name is legacy, OpenAI is primary (see Tech Stack above)
+│   │   │   ├── embeddings.js        Embedding provider factory — OpenAI primary, Gemini query-time fallback
 │   │   │   ├── retriever.js           Main retrieval function (used by step5) — queries MongoDB Atlas $vectorSearch directly, wrapped in retrievalCache
 │   │   │   ├── retriever.config.js
 │   │   │   ├── reranker.js            Keyword + intent reranker
@@ -228,7 +228,7 @@ OPENAI_API_KEY=...                   (required if LLM_PROVIDER or DECIDER_PROVID
 GOOGLE_API_KEY=...                   (required if LLM_PROVIDER or DECIDER_PROVIDER=google)
 
 # Embeddings — currently active: openai
-EMBEDDING_PROVIDER=openai            (openai | google — see backend/src/rag/geminiEmbeddings.js)
+EMBEDDING_PROVIDER=openai            (openai | google — see backend/src/rag/embeddings.js)
 EMBEDDING_FALLBACK_ENABLED=true      (query-time only fallback to Gemini if OpenAI is down)
 GEMINI_API_KEY=...                   (required for Gemini fallback; GOOGLE_API_KEY also accepted)
 

@@ -16,7 +16,7 @@
 
 import { normalizeQuery, hashString } from './cacheUtils.js';
 import { redisGet, redisSetex } from './cacheClient.js';
-import { GEMINI_EMBEDDING_MODEL } from '../rag/geminiEmbeddings.js';
+import { GEMINI_EMBEDDING_MODEL } from '../rag/embeddings.js';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -43,7 +43,7 @@ export const embeddingCache = {
    *        | async () => { embedding: number[], cacheable: boolean }
    *
    * When fetchFn reports `cacheable: false` (the query-time provider fell back
-   * to a different vector space — see geminiEmbeddings.embedQueryWithMeta), the
+   * to a different vector space — see embeddings.embedQueryWithMeta), the
    * embedding is returned to the caller for this request but is NEVER written to
    * L1 or L2. Caching a foreign-space vector under the primary key would keep
    * corrupting retrieval for the full 30-day TTL after the primary recovered.

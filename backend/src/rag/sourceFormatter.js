@@ -1,22 +1,10 @@
-/**
- * sourceFormatter.js
- *
- * Formats raw retrieved chunks into clean, deduplicated source objects
- * for attachment to the API response.
- *
- * WHY THIS EXISTS:
- *   The retriever returns raw document chunks. Multiple chunks may come from
- *   the same chapter section. This module deduplicates them by section,
- *   assigns numbered labels ("Source 1", "Source 2"), and builds structured
- *   source objects that the frontend can display.
- *
- * MAIN EXPORT:
- *   formatSources(chunks) → array of source objects
- */
+// I turn raw retrieved chunks into the "Source 1, Source 2" list the frontend shows.
+// Several chunks often come from the same chapter section, so I merge those into one
+// entry instead of showing the student the same section three times.
 
-const cleanText = (text) => String(text || '').replace(/\s+/g, ' ').trim();
+import { cleanText } from '../utils/text.js';
 
-const normalizeForComparison = (text) =>
+const toComparisonKey = (text) =>
   cleanText(text)
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
@@ -28,11 +16,9 @@ const getHeadingParts = (headingPath) =>
     .map((part) => part.trim())
     .filter(Boolean);
 
-/**
- * Extracts the leaf (most specific) heading from a heading path like:
- * "Chapter 1 > Life Processes > Nutrition" → "Nutrition"
- */
-const cleanTopicTitle = (headingPath, chapterTitle) => {
+// I take the most specific heading out of a path, so
+// "Chapter 1 > Life Processes > Nutrition" becomes just "Nutrition".
+const extractTopicTitle = (headingPath, chapterTitle) => {
   const parts = getHeadingParts(headingPath);
   const leaf = parts[parts.length - 1] || chapterTitle || 'Unknown topic';
   return leaf
@@ -41,30 +27,26 @@ const cleanTopicTitle = (headingPath, chapterTitle) => {
     .trim() || 'Unknown topic';
 };
 
-// Unique key per source: chapter + heading path combined
+// Two chunks from the same chapter and heading get the same key, which is how
+// I spot the duplicates.
 const createSourceKey = ({ chapterTitle, headingPath }) =>
-  `${normalizeForComparison(chapterTitle)}::${normalizeForComparison(headingPath)}`;
+  `${toComparisonKey(chapterTitle)}::${toComparisonKey(headingPath)}`;
 
-// Human-readable label: "Chemical Reactions and Equations - Key Definitions"
+// Reads as "Chemical Reactions and Equations - Key Definitions".
 const createSourceLabel = ({ chapterTitle, topicTitle }) =>
   topicTitle && topicTitle !== chapterTitle
     ? `${chapterTitle} - ${topicTitle}`
     : chapterTitle;
 
-/**
- * Converts a list of raw retrieval chunks into deduplicated source objects.
- * Chunks from the same heading section are merged into one source entry.
- *
- * @param {Array} chunks - Raw result objects from retrieveRelevantChunks()
- * @returns {Array}      - Deduplicated, numbered source objects
- */
+// Takes what retrieveRelevantChunks() returned and gives back the numbered,
+// deduplicated source list.
 export const formatSources = (chunks) =>
   chunks.reduce((sources, chunk) => {
     const metadata = chunk.metadata || {};
     const chapterTitle = metadata.chapter_title || 'Unknown';
     const hinglishTitle = metadata.hinglish_title || chapterTitle;
     const headingPath = metadata.heading_path || 'Unknown';
-    const topicTitle = cleanTopicTitle(headingPath, chapterTitle);
+    const topicTitle = extractTopicTitle(headingPath, chapterTitle);
     const chunkId = metadata.chunk_id || chunk.id || 'Unknown';
     const key = createSourceKey({ chapterTitle, headingPath });
 

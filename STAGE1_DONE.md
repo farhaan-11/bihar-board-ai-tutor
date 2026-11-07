@@ -138,14 +138,14 @@ No fix is marked done on assertion alone.
       recovered, retrieval stayed silently corrupted (cosine similarity across two
       vector spaces = noise) until those TTLs expired or `rag:index` ran. Same cause
       in two places: fallback-derived data being persisted. Fix (Rule 4 — remove the
-      cause, no read-side guard): `geminiEmbeddings.js` adds `embedQueryWithMeta()`
+      cause, no read-side guard): `embeddings.js` adds `embedQueryWithMeta()`
       → `{ embedding, usedFallback }` (plain `embedQuery()` unchanged for the
       LangChain interface / `intentSafetyNet`); `embeddingCache.getOrFetch()` accepts
       `fetchFn` returning `{ embedding, cacheable }` and skips **both** L1 and L2
       writes when `cacheable === false`; `retriever.js` propagates `usedFallback` in
       its result; `retrievalCache.getOrFetch()` skips its write when
       `result.usedFallback`. Query-time fallback itself is untouched (accepted
-      degraded-mode tradeoff, ADR-locked in `geminiEmbeddings.js` header) — only its
+      degraded-mode tradeoff, ADR-locked in `embeddings.js` header) — only its
       *persistence* is removed. `EMBEDDING_PROVIDER=google` mode: `usedFallback` is
       always false (Gemini is the primary, single space). Verified by
       `npm run test:no-cache-fallback` (failing-test → passing-test); baseline
