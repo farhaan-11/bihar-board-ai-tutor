@@ -261,15 +261,22 @@ pre-router so greetings never reach an LLM.
 See `STAGE1_DONE.md` for the launch checklist and the definition of "done".
 Do not start Stage 2 work before every Stage 1 box is ticked.
 
-**Exception, opened 2026-11-05 — the backend readability refactor.**
-Stage 1 *engineering* is complete (A, C, D, F, G all ✅). The seven remaining `[~]`
-boxes are owner deferrals, not pending engineering: I1/I4/I5 (infra, accepted-risk
-notes in `STAGE1_DONE.md`) and E1–E4 (the pilot, owner-parked). On that basis the
-Stage 2 readability refactor is running now, on branch
-`backend-readability-refactor`. **Its plan, live status and per-batch decisions are
-in `docs/BACKEND_READABILITY_PLAN.md` — read that file's STATUS section before doing
-any refactor work.** It is comments, naming and behaviour-preserving structure only;
-no logic change, no dead-code deletion, no frontend.
+**Exception, opened 2026-11-05 and closed 2026-11-07 — the backend readability
+refactor.** Stage 1 *engineering* is complete (A, C, D, F, G all ✅). The seven
+remaining `[~]` boxes are owner deferrals, not pending engineering: I1/I4/I5
+(infra, accepted-risk notes in `STAGE1_DONE.md`) and E1–E4 (the pilot,
+owner-parked). On that basis the Stage 2 readability refactor ran on branch
+`backend-readability-refactor`, and **all seven batches are done and merged to
+`main`**: the ask pipeline (orchestrator, step1–step7, intent router), retrieval,
+the models, the app and server entry points, and `auth.controller.js`. It was
+comments, naming and behaviour-preserving structure only — no logic change, no
+dead-code deletion, no frontend. The golden set passed after every batch that
+touched the ask pipeline; auth has no automated coverage, so it was proved with a
+stub harness instead (old vs new over 35 scenarios).
+
+The plan, its per-batch decisions and the verification methods are archived at
+`docs/archive/plans/BACKEND_READABILITY_PLAN.md`. The follow-ups it found and
+deliberately did not fix are `BACKLOG.md` O19–O26, all Stage 2.
 
 **Progress (updated 2026-10-29):**
 

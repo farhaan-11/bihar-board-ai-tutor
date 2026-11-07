@@ -1,5 +1,11 @@
 # Backend Readability Refactor — Plan v2
 
+> **✅ FINISHED 2026-11-07. Archived — nothing here is pending.**
+> All seven batches (0–6) are done, committed and merged to `main`. This file is
+> kept for its record of the per-batch decisions and the verification methods
+> (the stub-harness technique in particular), not as live work. The follow-ups it
+> found are in `BACKLOG.md` as O19–O26.
+
 Written 2026-11-05 on branch `backend-readability-refactor`.
 This replaces v1, which was comments-only and wrong.
 
