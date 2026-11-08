@@ -153,11 +153,13 @@ because those branches were actually deleted, and the
 | Local branch | State |
 |---|---|
 | `main` | Source of truth. |
-| `backend-readability-refactor` | Merged. Safe to delete. |
-| `stage1-f3-minors-data-adr` | Merged. Safe to delete. |
-| `stage1-f5-tick` | Merged. Safe to delete. |
 | `learn-track` | **Not merged** — 2 doc commits, the interview-prep notes. Keep. |
 | `quiz-phase0.5-bulk` | **Not merged** — frozen on purpose, ADR-010. Keep. |
+
+Three other local branches existed and were fully merged, so they were deleted on
+2026-11-08 as part of closing the refactor: `backend-readability-refactor`,
+`stage1-f3-minors-data-adr`, `stage1-f5-tick`. Nothing was lost — every commit of
+theirs is in `main`.
 
 On GitHub, nine merged branches are still published (`docker-local-compose`,
 `docs-render-is-prod`, `docs-reorganize`, `docs-state-fix-oct27`,
