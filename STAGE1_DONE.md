@@ -65,7 +65,7 @@ Each one follows the same protocol: **failing test first → fix → passing tes
 No fix is marked done on assertion alone.
 
 - [x] **BUG-1 fix** — decider parse error must not produce a false "not in syllabus"
-      (branch `bug1-decider-structured-output`, pending merge to `main`).
+      (merged to `main` 2026-08-28, `--no-ff`, `d3fd305`).
       Decider chain converted to `model.withStructuredOutput(decisionSchema, { strict: true })`;
       the `parse_error` fallback branch in `step4.decideRetrieval.js` is deleted. A
       genuine decider failure now throws `ProviderUnavailableError` → honest "try again"

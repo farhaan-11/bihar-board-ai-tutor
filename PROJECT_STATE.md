@@ -43,7 +43,7 @@ support when stressed.
 
 Everything below was verified by reading `main` on 2026-08-28. Not assumed.
 
-### Backend — 108 JS files in `backend/src/`
+### Backend — 116 JS files in `backend/src/` *(recounted 2026-11-08)*
 
 | System | Status | Where |
 |---|---|---|
@@ -64,7 +64,7 @@ Everything below was verified by reading `main` on 2026-08-28. Not assumed.
 **Models (10):** chapterProgress, chatHistory, chatSession, chunk, question,
 quizAttempt, quizSession, studyEvent, supportRequest, user
 
-### Frontend — 51 files in `frontend/src/`
+### Frontend — 58 files in `frontend/src/` *(recounted 2026-11-08)*
 
 **Pages (10):** Landing, Login, Register, ForgotPassword, ResetPassword,
 VerifyEmail, AuthCallback, Chat, Quiz, Support
@@ -131,7 +131,8 @@ All four are tracked in `STAGE1_DONE.md` sections F and G.
 **`main` is the source of truth.** All audits and fixes happen on branches cut
 from `main`.
 
-Updated 2026-08-28 (rows for 2026-09-10 and 2026-10-26 added later):
+Started 2026-08-28; rows added 2026-09-10 and 2026-10-26; the local-branch list
+below rechecked against git on **2026-11-08**:
 
 | Branch | Status |
 |---|---|
@@ -141,20 +142,30 @@ Updated 2026-08-28 (rows for 2026-09-10 and 2026-10-26 added later):
 | `quiz-phase0.5-bulk` | 🧊 **Frozen — will not be merged.** See `docs/decisions/010-freeze-quiz-bulk-branch.md`. Its finished output (the 1,126-question bank) already reached `main` via `quiz-phase1`; a byte-diff confirmed `data/quiz-bank/bank/questions.json` is identical on both branches. Kept as a rebuildable pipeline for later, not deleted. Pushed to GitHub 2026-08-28 as a backup, still frozen and unmerged. |
 | `docker-local-compose` | ✅ **Merged into `main`** 2026-10-26 22:29 (`--no-ff`, `d70c4d0`). Local 3-service compose stack + hardened `backend/Dockerfile`. The plan had been to wait until the EC2 deploy script was read; it was merged before that check. Safe today only because EC2 is stopped — see §8.2. Safe to delete the branch. |
 | `python-retriever` | ✅ **Merged into `main`** 2026-10-25 (fast-forward, `2a04c05`) and deleted locally + on GitHub. See §8.1. |
+| `fix-api-rate-limit-key` | ✅ **Merged into `main`** (`37825ff`). BUG-8b / `BACKLOG.md` R6 — the app-level limiter split into per-student and per-IP. Branch already deleted. |
+| `backend-readability-refactor` | ✅ **Merged into `main`** in two parts: `51d19f7` (batches 0–5, 2026-11-07) and `5f4ae7c` (batch 6 + archiving the plan, 2026-11-07). The whole refactor is finished; see §7. |
 
-**Merged and safe to delete:** `quiz`, `quiz-phase1..4`, `global`, `profile`,
-`logo`, `feat/support-page`, `stalefilefixes`, `DECIDER_GREETING_FIX`,
-`STREAM_FAILURE_FIX`, `codex-curriculum-resolvers`, `seo-work`,
-`bug1-decider-structured-output`, `bug3-choose-course-dead-whitelist`,
-`bug4-decider-stale-scope-exclusions`, `bug5-topic-id-projection-index`.
-Still present locally, fully merged into `main` (checked 2026-10-27 with
-`git merge-base --is-ancestor`), safe to delete: `docker-local-compose`,
-`docs-render-is-prod`, `docs-state-sync-oct26`, `docs-reorganize`, `guestID`,
-`latency-audit`, `phase1-golden-dump`, `codex-fix-chapter-progress-user-index`
-(this one is checked out in a separate worktree,
-`../bihar-board-ai-tutor-index-worktree` — remove the worktree first).
-Not merged: `learn-track` (2 doc commits, interview-prep notes),
-`quiz-phase0.5-bulk` (frozen, ADR-010).
+**Local branches — rechecked 2026-11-08 with `git merge-base --is-ancestor`.**
+Only six exist now; the long "safe to delete" list from 2026-10-27 is gone
+because those branches were actually deleted, and the
+`../bihar-board-ai-tutor-index-worktree` worktree no longer exists either.
+
+| Local branch | State |
+|---|---|
+| `main` | Source of truth. |
+| `learn-track` | **Not merged** — 2 doc commits, the interview-prep notes. Keep. |
+| `quiz-phase0.5-bulk` | **Not merged** — frozen on purpose, ADR-010. Keep. |
+
+Three other local branches existed and were fully merged, so they were deleted on
+2026-11-08 as part of closing the refactor: `backend-readability-refactor`,
+`stage1-f3-minors-data-adr`, `stage1-f5-tick`. Nothing was lost — every commit of
+theirs is in `main`.
+
+On GitHub, nine merged branches are still published (`docker-local-compose`,
+`docs-render-is-prod`, `docs-reorganize`, `docs-state-fix-oct27`,
+`docs-state-sync-oct26`, `quiz`, `stage1-f3-minors-data-adr`,
+`stage1-g1-spend-cap`, `stage1-g3-rollback-plan`). Deleting them is housekeeping,
+not work — nothing depends on them.
 
 ### ⚠️ Lesson learned (2026-08-28) — two, from the same day
 
@@ -182,10 +193,11 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 
 | # | Issue | Location |
 |---|---|---|
-| ~~BUG-1~~ | ✅ **Fixed** on branch `bug1-decider-structured-output` (pending merge). Decider now uses `withStructuredOutput`; the parse-error fallback is deleted. See ADR-011. |
+| ~~BUG-1~~ | ✅ **Fixed** — merged to `main` 2026-08-28 (`--no-ff`, `d3fd305`). Decider now uses `withStructuredOutput`; the parse-error fallback is deleted. See ADR-011. |
 | ~~BUG-2~~ | ✅ **Fixed** — same commit. `decisionSchema` `intent` enum + `normalizeDecision` fallback changed `GREETING` → `CONCEPT_QUESTION`. See ADR-011. |
 
-> **BUG-1 + BUG-2 — fixed, pending merge** (branch `bug1-decider-structured-output`).
+> **BUG-1 + BUG-2 — fixed and merged** 2026-08-28 (`--no-ff`, `d3fd305`, branch
+> `bug1-decider-structured-output`, since deleted).
 > Decider chain converted to `withStructuredOutput(decisionSchema, { strict: true })`;
 > parse-error and unknown-intent fallbacks removed. Verified by
 > `npm run test:decider-structured` and a live dev-server run. See `docs/archive/plans/BUG1_FIX_PLAN.md`
@@ -198,7 +210,7 @@ These are **BROKEN** (reproducible), not opinions. See `STAGE1_DONE.md`.
 | ~~BUG-7~~ | ✅ **Fixed** — merged to `main` 2026-08-29 (`--no-ff`, `e0f9d69`). `getAnswerLanguageInstruction()` returned the Hindi/Devanagari instruction from an early `return` (`languageDetector.js:98`) sitting before the tail glossary-append (TASK-024), so only Hinglish answers ever got the `scienceGlossary.js` term vocabulary. Fix (Rule 4): `wantsGlossary` decided once, independent of the language branch; glossary appended to whichever base instruction is returned; Hindi header instructs Devanagari rendering. Verified by `npm run test:glossary-devanagari`. See `STAGE1_DONE.md` Section C. |
 | BUG-7b (noted, deferred) | Legacy `step6.generateResponse.js:160` calls `getAnswerLanguageInstruction(language.answerLanguage)` with no `intent` → glossary never applied on that path for any language. Path is dead in prod (`USE_INTENT_ROUTER=true`). Not a Section C bug; fold into a Stage 2 cleanup of the legacy tutor path. | `ask/step6.generateResponse.js:160` |
 | ~~BUG-8~~ | ✅ **Fixed** — merged to `main` 2026-09-09 (`--no-ff`, `1086b36`). The quiz limiters' inline identity-keyer is extracted to one shared `identityKeyGenerator` export; `askApiLimiter` now uses it (the 3 quiz limiters switched to the shared fn too — byte-identical behaviour). 30/min is unchanged but now measured per `user_<id>` / `guest_<id>`, falling back to IP only when neither is present — so it never has to grow with user count (Rule 4: fixed the key, not the cap). Verified by `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged. See `STAGE1_DONE.md` Section C. |
-| ~~BUG-8b~~ | ✅ **Fixed** on branch `fix-api-rate-limit-key` (pending merge). The cause was one limiter doing two jobs with one key — per-student fairness *and* per-source flood protection. `globalApiLimiter` is replaced by `perStudentApiLimiter` (150 / 15 min, keyed by identity) and `perIpApiLimiter` (2500 / 15 min, keyed by IP). A new `auth/callerIdMiddleware.js` resolves the caller from the signed access/guest token with **no DB call**, so `optionalAuth` stays where it is and no route behaviour changes; `identityKeyGenerator` is now one line reading `req.callerId`, so identity is decided in exactly one place. The 150 was **not** raised (Rule 4). Keying by identity *alone* was rejected: guest tokens mint 60/hour/IP, so it would have multiplied the app-wide ceiling ~60× on `study-map` / `sessions` / `chapter-progress`, which have no limiter of their own. Verified by `npm run test:api-limiter-split` + updated `test:ask-limiter-identity`. |
+| ~~BUG-8b~~ | ✅ **Fixed** — merged to `main` (`37825ff`, branch `fix-api-rate-limit-key`, since deleted). The cause was one limiter doing two jobs with one key — per-student fairness *and* per-source flood protection. `globalApiLimiter` is replaced by `perStudentApiLimiter` (150 / 15 min, keyed by identity) and `perIpApiLimiter` (2500 / 15 min, keyed by IP). A new `auth/callerIdMiddleware.js` resolves the caller from the signed access/guest token with **no DB call**, so `optionalAuth` stays where it is and no route behaviour changes; `identityKeyGenerator` is now one line reading `req.callerId`, so identity is decided in exactly one place. The 150 was **not** raised (Rule 4). Keying by identity *alone* was rejected: guest tokens mint 60/hour/IP, so it would have multiplied the app-wide ceiling ~60× on `study-map` / `sessions` / `chapter-progress`, which have no limiter of their own. Verified by `npm run test:api-limiter-split` + updated `test:ask-limiter-identity`. |
 
 ---
 
@@ -278,15 +290,15 @@ The plan, its per-batch decisions and the verification methods are archived at
 `docs/archive/plans/BACKEND_READABILITY_PLAN.md`. The follow-ups it found and
 deliberately did not fix are `BACKLOG.md` O19–O26, all Stage 2.
 
-**Progress (updated 2026-10-29):**
+**Progress (updated 2026-11-08):**
 
 | Section | State |
 |---|---|
 | A — Repository hygiene | ✅ 5/5 |
 | B — Infrastructure | I2, I3 ✅ verified. I1 (Render paid), I4 (error monitoring), I5 (Redis paid) **deferred by owner** with accepted-risk notes in `STAGE1_DONE.md`. |
-| C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b / `BACKLOG.md` R6) fixed 2026-11-05 on `fix-api-rate-limit-key`, pending merge. |
+| C — The 8 bugs | ✅ **Complete.** BUG-1..BUG-8 all merged to `main`. Follow-on `globalApiLimiter` (BUG-8b / `BACKLOG.md` R6) fixed 2026-11-05 and merged (`37825ff`). |
 | D — Testing | ✅ **Complete.** D1✅ D2✅ D3✅ D4✅ D5✅. D4 done 2026-11-04 — full 67-case golden run against a live server + real LLM came back `✓ CLEAN`: **57 PASS / 10 WARN / 0 FAIL / 0 ERROR / 0 RATE-LIMIT**. All 9 intents green; the 10 WARN are quality-substring misses only (WARN, never fail, per the D3 decision). |
-| E — Real students | Not started. |
+| E — Real students | ⏸ **Owner-parked.** E1–E4 are all `[~]` in `STAGE1_DONE.md` — an owner-run pilot, not engineering work. Do not re-raise it unprompted. |
 | F — Legal & student safety | ✅ **Complete.** F1–F5 done; Section F code merged to `main` 2026-11-03 (`8ef3d4b`). Privacy + terms pages live, signup/guest consent, ADR-013 (minors data), deletion runbook (`docs/legal/DATA_DELETION_RUNBOOK.md`), Google OAuth consent screen reviewed (name/email scopes only, in production). |
 | G — Operations | ✅ **5/5.** G1 (spend cap) + G3 (`docs/ROLLBACK.md`) done 2026-10-27; G2 (Atlas backup), G4 (usage script), G5 (support inbox) owner-reported done 2026-10-29. |
 
@@ -422,7 +434,7 @@ Repo root holds only the files read every session: `PROJECT_STATE.md`,
 
 | Folder | What | State |
 |---|---|---|
-| `docs/archive/plans/` | Finished plans + old trackers (`BUG1_FIX_PLAN`, `GUEST_SERVERSIDE_PLAN`, `HINGLISH_QUERY_FIX_PLAN`, `STREAM_FAILURE_FIX_PLAN`, `SEO_PLAN`, `DEPLOYMENT_PLAN`, `UI_PLAN`, `PRE_LAUNCH_BLOCKERS`, `TASKS`, `ANALYSIS`, `DECISIONS`) | Done. History only — superseded by this file + `STAGE1_DONE.md`. |
+| `docs/archive/plans/` | Finished plans + old trackers (`BACKEND_READABILITY_PLAN` *(archived 2026-11-07)*, `BUG1_FIX_PLAN`, `GUEST_SERVERSIDE_PLAN`, `HINGLISH_QUERY_FIX_PLAN`, `STREAM_FAILURE_FIX_PLAN`, `SEO_PLAN`, `DEPLOYMENT_PLAN`, `UI_PLAN`, `PRE_LAUNCH_BLOCKERS`, `TASKS`, `ANALYSIS`, `DECISIONS`) | Done. History only — superseded by this file + `STAGE1_DONE.md`. |
 | `docs/quiz/` | Quiz blueprint, protocol, build log, Phase 4 plan | Paused at Phase 5 (not Stage 1). |
 | `docs/latency/` | `LATENCY_PROBLEMS.md` | Paused — problems only, no solutions file yet. |
 | `docs/python-track/` | Python RAG roadmap + the retrieval repo's CLAUDE.md | Reference; the live copies are in `zuno-retrieval-service`. |

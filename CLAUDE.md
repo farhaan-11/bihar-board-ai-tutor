@@ -55,13 +55,19 @@ He should never have to re-explain any of the following:
 2. **Never work on `main` directly.** New branch for every change, even a
    one-line doc edit. Merge only when the owner says so.
 
-**How the current work is structured:** Stage 1 = launch (`STAGE1_DONE.md`).
-Sections A (repo hygiene) ✅ and B (infra) triaged. Section C = 8 verified bugs
-(`PROJECT_STATE.md` §4), fixed one per branch, failing-test → fix → passing-test.
-BUG-1 + BUG-2 done (ADR-011). BUG-3…BUG-8 remain. Do not start Stage 2 / BACKLOG
-items — but a Stage-1 bug whose only Rule-4-compliant fix lives in BACKLOG may
-pull that slice forward *with a new ADR* (precedent: ADR-011 pulled the decider
-slice of O2).
+**How the current work is structured** *(updated 2026-11-08)*: Stage 1 = launch
+(`STAGE1_DONE.md`). Sections A, C, D, F and G are ✅ complete. B is triaged, with
+I1/I4/I5 deferred by the owner, and E (the student pilot) is owner-parked — both
+are owner decisions, not pending engineering. **All 8 of Section C's verified bugs
+are fixed and merged to `main`**, one branch each, failing-test → fix →
+passing-test. The backend readability refactor is finished too — all 7 batches
+merged, plan archived at `docs/archive/plans/BACKEND_READABILITY_PLAN.md`.
+
+So Stage 1 engineering is complete. What is left lives in `BACKLOG.md`: one 🔴
+BROKEN item (B1 — a push to `main` deploys to EC2 even when CI is red) and the 🟡
+RISK list. Do not start Stage 2 / BACKLOG items unasked — but a Stage-1 bug whose
+only Rule-4-compliant fix lives in BACKLOG may pull that slice forward *with a new
+ADR* (precedent: ADR-011 pulled the decider slice of O2).
 
 ---
 

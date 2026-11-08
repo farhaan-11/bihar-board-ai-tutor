@@ -1,6 +1,7 @@
 # ZUNO — Verified Facts for Resume (evidence-only)
 
-Audited on branch `phase1-golden-dump`, which is **at the same commit as `main`**
+Audited on branch `phase1-golden-dump` (since merged and deleted), which was **at
+the same commit as `main`**
 (`git rev-list --left-right --count main...HEAD` → `0 0`). So "on main" below means
 genuinely merged, except where noted as untracked working-tree files.
 
@@ -253,6 +254,9 @@ candidateCountBeforeRerank: 50
 countAfterMinScore:         50   ← cleared the 0.55 vector floor
 countAfterFinalFiltering:    0   ← all 50 killed by passesFinalFilter()
 ```
+
+*(`passesFinalFilter()` was renamed `shouldKeepResult()` in the 2026-11 readability
+refactor. The counters above are the original run's output, left as recorded.)*
 
 Hinglish tokens (`paudhe`, `khna`, `bnate`) can never term-match English chunk text, and raw vector
 scores sat at **0.59–0.69**, under the 0.70 bar.
