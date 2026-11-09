@@ -4,12 +4,13 @@
 
 ## ⛔ READ THESE FIRST — before any work, audit, or review
 
-These four files govern how work happens on this repo. They exist because this
+These five files govern how work happens on this repo. They exist because this
 project spent months in a fix-audit-rebreak loop. They are not optional reading.
 
 | File | What it is | When |
 |---|---|---|
-| **`PROJECT_STATE.md`** | The single source of truth for what exists right now, which branch has it, and what is broken. | **Always read first.** Never describe project state from memory or from an old doc. |
+| **`WORKING_AGREEMENT.md`** | How Claude must work with the owner: the 12 named problems from the 2026-11-09 session, the rules agreed so far, and where the last session stopped. | **Read this before anything else**, including before `PROJECT_STATE.md`. |
+| **`PROJECT_STATE.md`** | The single source of truth for what exists right now, which branch has it, and what is broken. | **Read second.** Never describe project state from memory or from an old doc. |
 | **`AUDIT_RULES.md`** | Binding rules for any review work. 3 severity buckets, max 7 BROKEN, audit `main` only, no new layer without removing a cause. | Before any audit, review, or "let me check what's wrong" task. |
 | **`STAGE1_DONE.md`** | The written definition of "done" for the current stage. | Before starting any task — if it is not in here, it is not current work. |
 | **`BACKLOG.md`** | Parked items. Opinions and future ideas live here. | When tempted to propose work outside the current stage. |
