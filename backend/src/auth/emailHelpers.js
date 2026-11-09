@@ -27,37 +27,23 @@ const getTransporter = () => {
   return transporter;
 };
 
-/**
- * Verify Mailer connection on server startup.
- * If BREVO_API_KEY is active, skips SMTP verification (Render Free mode over HTTP API).
- * Otherwise verifies Nodemailer SMTP connection (Hostinger VPS / Local mode).
- */
+
 export const connectMailer = async () => {
   if (process.env.BREVO_API_KEY) {
     console.log('[Mailer] Brevo HTTP API mode active. SMTP verification skipped.');
     return;
   }
 
-  // ---------------------------------------------------------------------------
-  // [FALLBACK / ORIGINAL NODEMAILER SMTP VERIFICATION]
-  // Used for Local Development or when moving to Hostinger VPS (where ports 465/587 are open).
-  // ---------------------------------------------------------------------------
+ 
   await getTransporter().verify();
   console.log('[Mailer] Nodemailer SMTP connected successfully.');
 };
 
-/**
- * Send email verification link to newly registered user.
- * @param {string} to - User's email address
- * @param {string} token - Random verification token (hex string)
- */
+
 export const sendVerificationEmail = async (to, token) => {
   const verifyUrl = `${getAppBaseUrl()}/verify-email?token=${token}`;
 
-  // ===========================================================================
-  // [PRIMARY MODE: BREVO HTTP API (Port 443 HTTPS)]
-  // Active when BREVO_API_KEY environment variable is set (e.g. Render Free Tier).
-  // ===========================================================================
+  
   if (process.env.BREVO_API_KEY) {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -100,10 +86,6 @@ export const sendVerificationEmail = async (to, token) => {
     return;
   }
 
-  // ===========================================================================
-  // [FALLBACK MODE: NODEMAILER SMTP (GoDaddy / Custom SMTP)]
-  // Active when BREVO_API_KEY is not set (e.g. Hostinger VPS or Local Dev).
-  // ===========================================================================
   await getTransporter().sendMail({
     from: process.env.EMAIL_FROM || '"Zuno" <farhan@learnzuno.in>',
     to,
@@ -126,18 +108,11 @@ export const sendVerificationEmail = async (to, token) => {
   });
 };
 
-/**
- * Send password reset link.
- * @param {string} to - User's email address
- * @param {string} token - Random reset token (hex string)
- */
+
 export const sendPasswordResetEmail = async (to, token) => {
   const resetUrl = `${getAppBaseUrl()}/reset-password?token=${token}`;
 
-  // ===========================================================================
-  // [PRIMARY MODE: BREVO HTTP API (Port 443 HTTPS)]
-  // Active when BREVO_API_KEY environment variable is set (e.g. Render Free Tier).
-  // ===========================================================================
+ 
   if (process.env.BREVO_API_KEY) {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
@@ -181,10 +156,6 @@ export const sendPasswordResetEmail = async (to, token) => {
     return;
   }
 
-  // ===========================================================================
-  // [FALLBACK MODE: NODEMAILER SMTP (GoDaddy / Custom SMTP)]
-  // Active when BREVO_API_KEY is not set (e.g. Hostinger VPS or Local Dev).
-  // ===========================================================================
   await getTransporter().sendMail({
     from: process.env.EMAIL_FROM || '"Zuno" <farhan@learnzuno.in>',
     to,
@@ -217,12 +188,7 @@ const SUPPORT_CATEGORY_LABELS = {
   other: 'Other',
 };
 
-/**
- * Notify the team inbox when a student submits a support request.
- * Reply-To is set to the student's email so replying from the inbox goes
- * straight to them, not back to the notification address.
- * @param {object} supportRequest - the saved SupportRequest mongoose doc
- */
+
 export const sendSupportNotificationEmail = async (supportRequest) => {
   const { category, subject, description, email, userId, guestId, sessionId, createdAt } = supportRequest;
   const categoryLabel = SUPPORT_CATEGORY_LABELS[category] || category;

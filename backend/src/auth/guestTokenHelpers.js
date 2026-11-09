@@ -28,21 +28,11 @@ const guestSecret = () => process.env.GUEST_TOKEN_SECRET;
 // re-mints. 180d comfortably outlives the 30-day guest_turns counter TTL.
 const GUEST_TOKEN_EXPIRY = '180d';
 
-/**
- * Mints a signed guest token wrapping a fresh random gid.
- * @returns {string} signed JWT
- */
+
 export const generateGuestToken = () => {
   return jwt.sign({ t: 'guest', gid: randomUUID() }, guestSecret(), { expiresIn: GUEST_TOKEN_EXPIRY });
 };
 
-/**
- * Verifies a guest token.
- * @param {string} token
- * @returns {string|null} the inner gid on success; null on ANY failure
- *   (bad/missing signature, wrong secret, wrong or missing type claim, expired,
- *   malformed, non-string input). Never throws.
- */
 export const verifyGuestToken = (token) => {
   if (!token || typeof token !== 'string') return null;
   try {

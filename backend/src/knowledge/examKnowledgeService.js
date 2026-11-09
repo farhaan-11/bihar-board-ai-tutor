@@ -119,16 +119,7 @@ const buildEntityIndex = (data) => {
   return index;
 };
 
-/**
- * Resolves a student-referenced name (e.g. "Physics", "History", "Algebra", "Life
- * Processes") to its exact marks + parent-paper relationship, by exact match first,
- * then a conservative substring match (guards against 1-2 character junk matching
- * everything). Returns null if nothing matches — callers must fall back gracefully
- * (see step5.retrieveContent.js), never invent a number for an unresolved name.
- *
- * @param {string|null} rawName
- * @returns {{name:string, level:string, ownMarks:number, ownMarksOutOf:number, parentName:string|null}|null}
- */
+
 export const resolveExamEntity = (rawName) => {
   if (!rawName) return null;
   const data = loadData();
@@ -204,13 +195,7 @@ const formatChapter = (ch) => {
   return lines.join('\n');
 };
 
-/**
- * Returns the full Bihar Board Class 10 exam pattern as a formatted string.
- * This string is injected into the tutor LLM as {retrievedContext}.
- * The LLM reads it and answers the student's specific exam question.
- *
- * @returns {string} Formatted exam pattern context (~600-700 tokens)
- */
+
 export const getExamContext = () => {
   const data = loadData();
   const sci = data.subjects.science;

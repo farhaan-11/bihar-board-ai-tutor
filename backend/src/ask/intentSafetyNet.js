@@ -14,14 +14,7 @@ import { createQueryEmbeddings } from '../rag/embeddings.js';
 const getSimilarityThreshold = () =>
   parseFloat(process.env.SAFETY_NET_SIMILARITY_THRESHOLD ?? '0.70');
 
-/**
- * Checks if a query matches any indexed chapter content.
- *
- * @param {string} query - The decider's English translation of the student's message
- * @returns {Promise<{ score: number, fired: boolean }>}
- *   score - top-1 cosine similarity (0-1)
- *   fired - true if score >= threshold, so the caller should upgrade the intent
- */
+
 export const checkSyllabusMatch = async (query) => {
   try {
     const embeddings = createQueryEmbeddings();
