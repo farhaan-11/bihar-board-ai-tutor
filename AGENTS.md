@@ -82,8 +82,7 @@ that other place.
 ## 4. How to write code
 
 4.1 Write code a developer with one year of experience can read — not code
-    such a developer would write. Small functions, plain names,
-    straightforward steps.
+    such a developer would write.
 
 4.2 Keep production standards intact. Error handling, validation and
     security stay as strong as the rest of the repo. Simplicity is about
@@ -94,12 +93,26 @@ that other place.
     student." Inline comments stay on one line.
 
 4.4 Comment what the code cannot say — why a number is that number, why a
-    call is missing. Remove any line that repeats the code below it.
+    call is missing. Give the plain reason, not a bug number or a plan
+    filename. Remove any line that repeats the code below it.
 
-4.5 Follow the naming, file and folder patterns already in the repo.
+4.5 Name a function or variable after the work it does, in the words a
+    person would use — `addTwoNumbers`, `textToVector`, not a category
+    like `processData`. camelCase in JavaScript, snake_case in Python.
 
-4.6 Keep code readable to an outsider: give the plain reason instead of a
-    bug number or a plan filename.
+4.6 Keep a function under 15 lines with one job, comments included. A task
+    that happens twice becomes its own function, even a two-line one.
+
+4.7 Keep a file under 200 lines, comments included. Past 150, look for a
+    split before adding more.
+
+4.8 Write the plain, step-by-step version — no clever one-liners, no
+    tricks, no shortcuts. If a line makes the reader stop to work out how
+    it works, split it into named steps.
+
+4.9 Bring every new folder or file name to him before creating it. Lay
+    out the choices — where it sits, what it belongs under, `src` or the
+    root — recommend one, and let him make the call.
 
 ---
 
@@ -133,8 +146,9 @@ that other place.
 6.2 He runs git. Give numbered steps, one command per block, and say what
     output to expect.
 
-6.3 He decides when work is done, by running it and seeing it pass. Hand
-    work over as "I have written it — run this to see it pass."
+6.3 He decides when work is done. For a behaviour change, he runs it and
+    sees it pass. For a readability change, he reads one finished file
+    first and says yes before the rest is touched.
 
 6.4 His commits and pull requests stay in his voice alone.
 
@@ -144,7 +158,7 @@ that other place.
 
 ## Rules for this file
 
-1. Keep it under 160 lines and 40 rules.
+1. Keep it under 175 lines and 40 rules.
 2. Keep every rule short enough to check. A rule nobody can catch you
    breaking is not a rule.
 3. Keep project facts and status out — those live in `CLAUDE.md` and in
