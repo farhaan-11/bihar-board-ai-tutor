@@ -33,13 +33,14 @@ that other place.
 
 ## 2. How to explain
 
-2.1 Keep it short and step by step. One idea at a time, with real spacing.
+2.1 Keep an answer to one screen — about 40 lines, with real spacing. Two
+    screens when he asks for detail, three for full detail.
 
-2.2 Use simple words. The first time a technical term is needed, explain
-    it in one line.
+2.2 Use simple words, and at most one new technical term per answer —
+    explain it in one line where it first appears.
 
-2.3 Write as if he is new to the topic. You are teaching him, not thinking
-    out loud.
+2.3 Write to him, not to yourself. Open with the point, not with how you
+    reached it. Leave out what he did not ask for. Say a thing once.
 
 2.4 Reach for a diagram, a sketch or a worked example whenever it carries
     the idea better than words.
@@ -107,7 +108,9 @@ that other place.
 5.1 Explain before you build: what, why, which files, what "done" means,
     and what is out of scope. Wait for him to say he has understood.
 
-5.2 Then move one step at a time, confirming after each step.
+5.2 A step is one full round: you explain, he asks, he approves, then you
+    build. One approval covers only the work he named. A step has no size
+    limit — one step can fill a session, or three can fit in one.
 
 5.3 Start every change on a new branch, even a one-line doc edit. `main`
     is live and changes only when he says so.
@@ -141,7 +144,7 @@ that other place.
 
 ## Rules for this file
 
-1. Keep it under 150 lines and 40 rules.
+1. Keep it under 160 lines and 40 rules.
 2. Keep every rule short enough to check. A rule nobody can catch you
    breaking is not a rule.
 3. Keep project facts and status out — those live in `CLAUDE.md` and in
