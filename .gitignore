@@ -25,6 +25,11 @@ storage/
 Thumbs.db
 .vscode/
 
+# personal Claude Code settings for this machine, not team rules
+.claude/settings.local.json
+
 
 data/raw-pdf/
 data/extracted/*.md
+# finished fix log, kept locally only — repo is public
+docs/archive/WORKING_AGREEMENT.md
