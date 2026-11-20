@@ -1,7 +1,7 @@
 /**
  * test-no-cache-fallback.js
  *
- * Regression test for BUG-6 (PROJECT_STATE.md §4 / STAGE1_DONE.md Section C).
+ * Regression test for BUG-6 (STAGE1_DONE.md Section C).
  *
  * BUG-6: embeddingCache.getOrFetch() caches whatever vector fetchFn returns,
  * with no knowledge of which provider produced it. During an OpenAI outage,

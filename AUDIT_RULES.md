@@ -142,6 +142,26 @@ fresh discovery. This is the specific behaviour that made the owner lose trust.
 
 ---
 
+## Rule 8 — Test a real merge before calling it risky
+
+`git diff main..other` shows a file as "deleted" whenever the other branch
+never touched it. That does not mean a merge would delete it.
+
+Before you tell the owner a merge is risky, try it for real (clean working
+tree first):
+
+```bash
+git merge --no-commit --no-ff <branch>
+git status                 # read what would really change
+git merge --abort
+```
+
+**Real incident (2026-08-28):** a raw diff made it look like the quiz system
+would disappear. A real test merge showed the merge was safe, with only small
+conflicts.
+
+---
+
 ## Audit output template
 
 ```markdown

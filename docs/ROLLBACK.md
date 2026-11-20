@@ -140,6 +140,6 @@ data likh diya ya kuch delete kar diya, woh rollback se wapas nahi aayega.
 ## Rollback ke baad
 
 1. `/health` aur site dono check karo — ek sawal poochh ke dekho.
-2. `PROJECT_STATE.md` mein ek line likho: kya toota, kab, kaunsa commit revert hua.
+2. Write one line in the revert commit message: what broke, when, and which commit was reverted (`git revert` opens the editor for it). Git is the record; no other file needs updating.
 3. Bug ko ek **nayi branch** pe theek karo — failing test → fix → passing test
    (`AUDIT_RULES.md`). Seedha `main` pe kabhi nahi.

@@ -1,7 +1,7 @@
 /**
  * test-glossary-devanagari.js
  *
- * Regression test for BUG-7 (PROJECT_STATE.md §4 / STAGE1_DONE.md Section C).
+ * Regression test for BUG-7 (STAGE1_DONE.md Section C).
  *
  * BUG-7: getAnswerLanguageInstruction() (utils/languageDetector.js) returned the
  * Hindi/Devanagari instruction from an early `return` that sat BEFORE the

@@ -7,6 +7,10 @@ genuinely merged, except where noted as untracked working-tree files.
 
 Labels: **MEASURED** / **COMPUTED** / **DESIGN** / **NOT FOUND**
 
+Note: `PROJECT_STATE.md` was removed after this audit. Every citation of it below
+points to that old file and its line numbers at the time. Read it from git history
+with `git log -- PROJECT_STATE.md`.
+
 ---
 
 ## 1. Cost per turn — "$0.00125"

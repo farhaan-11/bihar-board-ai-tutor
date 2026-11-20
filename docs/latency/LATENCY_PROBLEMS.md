@@ -12,6 +12,9 @@
 > **Branch:** `latency-audit`, cut from `main` @ `a27f793`
 > **Divergence at audit time:** ahead 0, behind 0 ✅ (`AUDIT_RULES.md` Rule 1)
 > **Working tree at audit time:** clean
+> **Note:** `PROJECT_STATE.md` was removed after this audit. Every citation of it
+> below points to that old file. Read it from git history with
+> `git log -- PROJECT_STATE.md`.
 
 ---
 

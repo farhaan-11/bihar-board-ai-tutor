@@ -29,7 +29,7 @@ Retrieval (step 5) runs only when the decider says it is needed.
 
 ## Consequences
 - **Easy:** cheap failure, cheap non-academic turns, debuggable routing
-- **Hard:** two round trips add latency; per-turn token cost is ~6,100 (see `PROJECT_STATE.md` §6)
+- **Hard:** two round trips add latency; per-turn token cost is ~6,100 (see `docs/ZUNO_VERIFIED_FACTS.md` §1)
 
 ## Revisit when
 - End-to-end latency exceeds 3 seconds consistently, or
