@@ -30,8 +30,8 @@ Those are Stage 2 and Stage 3.
 - [x] **A4.** `main` builds clean: `cd frontend && npm run build` — verified
       2026-08-28, including the new Playwright pre-render step. Quiz components
       (`QuizModal`, `QuizPage`) confirmed present in the build output.
-- [x] **A5.** `PROJECT_STATE.md` matches reality after the merges — updated
-      2026-08-28
+- [x] **A5.** The project-state file (`PROJECT_STATE.md`, since removed — see
+      git history) matched reality after the merges — updated 2026-08-28
 
 ---
 
@@ -171,8 +171,8 @@ No fix is marked done on assertion alone.
       *Noted, not fixed (out of scope):* the legacy `step6.generateResponse.js:160`
       path calls `getAnswerLanguageInstruction(language.answerLanguage)` with no
       `intent`, so the glossary is never applied there for **any** language. That
-      path is dead in production (`USE_INTENT_ROUTER=true`). Tracked in
-      `PROJECT_STATE.md` §4.
+      path is dead in production (`USE_INTENT_ROUTER=true`). Fold it into a
+      Stage 2 cleanup of the legacy tutor path.
 - [x] **BUG-8 fix** — `askApiLimiter` keyed by identity, not raw IP
       (merged to `main` 2026-09-09, `--no-ff`, `1086b36`).
       `askApiLimiter` had **no** `keyGenerator`, so express-rate-limit keyed the
@@ -189,7 +189,7 @@ No fix is marked done on assertion alone.
       and is far above any real student's asking rate. Verified by
       `npm run test:ask-limiter-identity` (failing-test → passing-test); baseline
       (`test:chunks`, `test:study-map`, `test:curriculum-resolvers`) unchanged.
-      *Noted, not fixed (deferred → `BACKLOG.md` R6 / `PROJECT_STATE.md` §4 BUG-8b):*
+      *Noted, not fixed (deferred → `BACKLOG.md` R6):*
       `globalApiLimiter` (150 req / 15 min, app-wide on every `/api` route at
       `app.js:60`) has the **same raw-IP cause** and, being lower-rate and
       route-wide, is the binding constraint for a classroom — so BUG-8 reduces
@@ -309,7 +309,7 @@ No fix is marked done on assertion alone.
       Limits); the page labels it as the trigger for spend alerts, so treat it as an
       alert, not the cap. When credit runs out, OpenAI calls fail and students get the
       "try again" message — the app does not crash. Raise the limit/credit when the
-      student count grows (~$0.00125/turn, `PROJECT_STATE.md` §6).
+      student count grows (~$0.00125/turn, `docs/ZUNO_VERIFIED_FACTS.md` §1).
 - [x] **G2.** MongoDB Atlas backup verified — free/shared tiers have no automated
       backups. Losing the DB means losing every student's progress.
       **Done (owner-reported 2026-10-29).**
@@ -339,8 +339,7 @@ No fix is marked done on assertion alone.
 When that happens:
 
 1. Tag the commit `v1.0-launch`
-2. Update `PROJECT_STATE.md`
-3. **Stage 1 is closed.** It is not reopened by a later audit, a new idea, or a
+2. **Stage 1 is closed.** It is not reopened by a later audit, a new idea, or a
    better approach. Those go to `BACKLOG.md` and are considered in Stage 2.
 
 ---

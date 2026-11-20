@@ -1,7 +1,7 @@
 /**
  * test-topic-id-lookup.js
  *
- * Regression test for BUG-5 (PROJECT_STATE.md §4 / STAGE1_DONE.md Section C).
+ * Regression test for BUG-5 (STAGE1_DONE.md Section C).
  *
  * BUG-5: retrieveChunksByTopicId() (rag/retriever.js) runs the NEXT_STEP
  * deterministic chunk lookup as `Chunk.find({ 'metadata.topic_ids': id }).lean()`

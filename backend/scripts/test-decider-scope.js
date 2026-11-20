@@ -1,7 +1,7 @@
 /**
  * test-decider-scope.js
  *
- * Regression test for BUG-4 (PROJECT_STATE.md §4 / STAGE1_DONE.md Section C).
+ * Regression test for BUG-4 (STAGE1_DONE.md Section C).
  *
  * BUG-4: deciderPrompt.js hardcoded "Cell structure" and "Atomic structure"
  * into the OUT_OF_CONTEXT exclusion list (intent 8 definition) AND into the

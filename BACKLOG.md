@@ -9,7 +9,7 @@ Source: full Ask-pipeline audit, 2026-08-28. That audit produced 25 findings.
 8 were BROKEN and moved to `STAGE1_DONE.md`. The rest are below, honestly
 re-classified — most were opinions presented as problems.
 
-**Addendum 2026-10-26** (found during the `PROJECT_STATE.md` §8 sync, after the
+**Addendum 2026-10-26** (found during the docs sync, after the
 Python retriever / Docker / EC2 work): **B1**, **R7**, **O16**, **O17**, **A1**.
 Each carries its Rule 2 bucket and its evidence. Nothing here was fixed.
 
@@ -32,8 +32,8 @@ not reproduced live (reproducing it would trigger a real deploy).
 `ci.yml` behind `needs:`. Do **not** add a "check CI status" step inside the
 deploy; the cause is two independent triggers.
 **Stage:** not in `STAGE1_DONE.md` by default. The owner decides whether it joins
-Section G. Context: the EC2 instance is stopped today (`PROJECT_STATE.md` §8.3),
-so right now this deploy job would fail at the SSH step anyway.
+Section G. Context: the EC2 instance was stopped on 2026-10-26 (owner-reported; see
+`docs/ROLLBACK.md`), so this deploy job would fail at the SSH step anyway.
 
 ---
 
@@ -119,7 +119,6 @@ The cause is the key, not the number.
 
 **Blocking condition:** must be fixed before onboarding any single-classroom /
 single-school-wifi group. Fine for a launch cohort on separate home connections.
-(Also noted in `PROJECT_STATE.md` §4 + §7.)
 
 ---
 
@@ -263,7 +262,7 @@ The decision may still be correct; the stated reason is not.
 
 ### O15. Documentation sprawl
 16 markdown plan files in the repo root. Several are point-in-time snapshots
-that contradict current code. `PROJECT_STATE.md` now supersedes most of them.
+that contradict current code. They have since been moved to `docs/archive/plans/`.
 **Stage 2 — archive, don't delete.**
 
 ### O16. Local environment is wired to the production database

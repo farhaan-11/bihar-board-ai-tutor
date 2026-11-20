@@ -1,7 +1,7 @@
 /**
  * test-choose-course-memory.js
  *
- * Regression test for BUG-3 (PROJECT_STATE.md §4 / STAGE1_DONE.md Section C).
+ * Regression test for BUG-3 (STAGE1_DONE.md Section C).
  *
  * BUG-3: step7.saveAndRespond.js's INTENT_MEMORY_WHITELIST let CHOOSE_COURSE
  * write currentSubjectId / currentSectionId / currentChapterId into session
