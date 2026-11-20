@@ -31,3 +31,5 @@ Thumbs.db
 
 data/raw-pdf/
 data/extracted/*.md
+# finished fix log, kept locally only — repo is public
+docs/archive/WORKING_AGREEMENT.md
