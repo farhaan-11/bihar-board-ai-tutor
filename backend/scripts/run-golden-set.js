@@ -11,7 +11,9 @@
  * Per-query outcome:
  *   PASS  = intent matches expectedIntent
  *   WARN  = intent matched but quality (substring) checks missed — NOT a failure
- *   FAIL  = intent did not match
+ *   FAIL  = intent did not match, OR the backend shipped its fallback answer
+ *           (payload.status === 'error' — e.g. step6 / intentRouter couldn't
+ *           build a real answer and sent the canned "Thodi dikkat" string).
  *   ERROR = HTTP / timeout / crash
  *   SKIP  = provider_error (OpenAI rate-limit / down) — run is inconclusive
  *
@@ -154,17 +156,25 @@ const evaluateResponse = (response, { expectedIntent, qualityChecks }) => {
     return { outcome: 'PASS', actualIntent, setup: true };
   }
 
+  // I fail the case when the backend already told us it fell back. intentRouter
+  // and step6 set payload.status to 'error' when they cannot produce a real
+  // answer and ship the canned "Thodi technical dikkat aayi" string; the intent
+  // label is still populated, so without this check such a case would surface
+  // as WARN (or even PASS) — the exact hole the old runner had.
+  const backendError = payload.status === 'error';
   const intentMatch  = actualIntent === expectedIntent;
   const quality      = checkQuality(payload, qualityChecks);
 
   let outcome;
-  if (!intentMatch) outcome = 'FAIL';
+  if (backendError)         outcome = 'FAIL';
+  else if (!intentMatch)    outcome = 'FAIL';
   else if (!quality.passed) outcome = 'WARN';
-  else outcome = 'PASS';
+  else                      outcome = 'PASS';
 
   return {
     outcome,
     actualIntent,
+    backendError,
     actualResponseMode: payload.responseMode,
     intentMatch,
     qualityPassed: quality.passed,
@@ -262,6 +272,7 @@ const run = async () => {
 
         const detail =
           ev.setup ? ` (setup: ${ev.actualIntent})`
+          : ev.outcome === 'FAIL' && ev.backendError ? ` (backend fallback — status:'error')`
           : ev.outcome === 'FAIL' ? ` (got ${ev.actualIntent}, expected ${turn.expectedIntent})`
           : ev.outcome === 'PASS' || ev.outcome === 'WARN' ? ` (${ev.actualIntent})`
           : ev.error ? ` (${ev.error})` : '';
@@ -273,6 +284,7 @@ const run = async () => {
           expectedIntent: turn.expectedIntent,
           actualIntent:   ev.actualIntent,
           outcome:        ev.outcome,
+          backendError:   ev.backendError,
           qualityFailed:  ev.qualityFailed,
           error:          ev.error,
         });
@@ -331,13 +343,18 @@ const run = async () => {
     } else {
       result.actualResponseMode = ev.actualResponseMode;
       result.intentMatch        = ev.intentMatch;
+      result.backendError       = ev.backendError;
       result.qualityPassed      = ev.qualityPassed;
       result.qualityFailed      = ev.qualityFailed;
       result.answerSnippet      = ev.answerSnippet;
       result.tokenUsage         = ev.tokenUsage;
 
       if (ev.outcome === 'FAIL') {
-        console.log(RED(`FAIL  — got ${ev.actualIntent} (expected ${query.expectedIntent})`));
+        if (ev.backendError) {
+          console.log(RED(`FAIL  — backend fallback answer (status:'error'); intent was ${ev.actualIntent}`));
+        } else {
+          console.log(RED(`FAIL  — got ${ev.actualIntent} (expected ${query.expectedIntent})`));
+        }
       } else if (ev.outcome === 'WARN') {
         console.log(YELLOW(`WARN  — intent ✓ but quality checks failed: [${ev.qualityFailed.join(', ')}]`));
       } else {
@@ -405,7 +422,9 @@ const run = async () => {
       if (r.multiTurn) {
         // Only the turns that weren't a clean PASS.
         for (const t of r.turns.filter(t => t.outcome !== 'PASS')) {
-          if (t.outcome === 'FAIL') {
+          if (t.outcome === 'FAIL' && t.backendError) {
+            console.log(`         turn ${t.turn}: backend fallback answer (status:'error')`);
+          } else if (t.outcome === 'FAIL') {
             console.log(`         turn ${t.turn}: expected ${t.expectedIntent}, got ${t.actualIntent}`);
           } else if (t.outcome === 'WARN') {
             console.log(`         turn ${t.turn}: missing quality keywords [${t.qualityFailed?.join(', ')}]`);
@@ -413,6 +432,8 @@ const run = async () => {
             console.log(`         turn ${t.turn}: ${t.error}`);
           }
         }
+      } else if (r.outcome === 'FAIL' && r.backendError) {
+        console.log(`         Backend fallback answer (status:'error'); intent was ${r.actualIntent}`);
       } else if (r.outcome === 'FAIL') {
         console.log(`         Expected: ${r.expectedIntent}  Got: ${r.actualIntent}`);
       } else if (r.outcome === 'WARN') {
